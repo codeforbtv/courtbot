@@ -17,7 +17,7 @@ exports.findCitation = function(citation, callback) {
   // Postgres JSON search based on prebuilt index
   citation = escapeSQL(citation.toUpperCase());
   var citationSearch = knex.raw("'{\"" + citation + "\"}'::text[] <@ (json_val_arr(citations, 'id'))");
-  knex('cases').where(citationSearch).select().exec(callback);
+  knex('cases').where(citationSearch).select().asCallback(callback);
 };
 
 exports.fuzzySearch = function(str, callback) {
@@ -34,7 +34,7 @@ exports.fuzzySearch = function(str, callback) {
 
   // Limit to ten results
   query = query.limit(10);
-  query.exec(callback);
+  query.asCallback(callback);
 };
 
 exports.addReminder = function(data, callback) {
@@ -47,7 +47,7 @@ exports.addReminder = function(data, callback) {
     phone: encryptedPhone,
     created_at: new Date(),
     original_case: data.originalCase,
-  }).exec(callback);
+  }).asCallback(callback);
 };
 
 exports.addQueued = function(data, callback) {
@@ -59,7 +59,7 @@ exports.addQueued = function(data, callback) {
     sent: false,
     phone: encryptedPhone,
     created_at: new Date(),
-  }).exec(callback);
+  }).asCallback(callback);
 };
 
 var escapeSQL = function(val) {

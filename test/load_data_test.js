@@ -5,12 +5,18 @@ var tk = require('timekeeper');
 var fs = require('fs');
 var Promise = require('bluebird');
 var moment = require("moment");
+var url = require('url');
+var city_config = require("../city_config");
 
 var Knex = require('knex');
 var knex = Knex.initialize({
   client: 'pg',
   connection: process.env.DATABASE_URL || 'localhost'
 });
+
+var url_obj = url.parse(city_config.csv_url)
+var domain = url_obj.protocol + '//' + url_obj.host
+var path = url_obj.path
 
 describe("Loading of Data", function() {
   beforeEach(function() {
@@ -19,8 +25,8 @@ describe("Loading of Data", function() {
   });
 
   describe("With a 404 on the CSV", function() {
-    nock('http://courtview.atlantaga.gov')
-      .get('/courtcalendars/court_online_calendar/codeamerica.03012015.csv')
+    nock(domain)
+      .get(path)
       .reply(404);
 
     it("hits the error callback with a 404 message", function() {
@@ -32,8 +38,8 @@ describe("Loading of Data", function() {
 
   describe("With a 200 on the CSV", function() {
     beforeEach(function() {
-      nock('http://courtview.atlantaga.gov')
-        .get('/courtcalendars/court_online_calendar/codeamerica.03012015.csv')
+      nock(domain)
+        .get(path)
         .reply(200, function() {
           return fs.createReadStream('test/fixtures/codeamerica.03012015.csv');
         });

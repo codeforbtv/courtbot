@@ -45,7 +45,7 @@ describe("with 2 valid queued cases (same citation)", function() {
     var number = "+12223334444";
     var message = "Your Atlanta Municipal Court information was found: a court case for " +
                   "Frederick T Turner on Thursday, Mar 26th at 01:00:00 PM, in courtroom CNVCRT. " +
-                  "Call us at (404) 954-7914 with any questions.";
+                  "Call us at (907) XXX-XXXX with any questions.";
 
     nock('https://api.twilio.com:443')
       .post('/2010-04-01/Accounts/test/Messages.json', "To=" + encodeURIComponent(number) + "&From=%2Btest&Body=" + encodeURIComponent(message))
@@ -92,7 +92,7 @@ describe("with a queued non-existent case", function() {
 
   it("sends a failure sms after 16 days", function(done) {
     var number = "+12223334444";
-    var message = "We haven't been able to find your court case. Please call us at (404) 954-7914. -Atlanta Municipal Court";
+    var message = "We haven't been able to find your court case. Please call us at (907) XXX-XXXX. -Atlanta Municipal Court";
 
     nock('https://api.twilio.com:443')
       .post('/2010-04-01/Accounts/test/Messages.json', "To=" + encodeURIComponent(number) + "&From=%2Btest&Body=" + encodeURIComponent(message))

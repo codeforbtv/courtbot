@@ -6,7 +6,7 @@ var db = require('./db.js');
 var Promise = require('bluebird');
 var knex = Knex.initialize({
   client: 'pg',
-  connection: process.env.DATABASE_URL
+  connection: process.env.DATABASE_URL || 'localhost'
 });
 var moment = require('moment');
 

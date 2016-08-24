@@ -139,7 +139,7 @@ describe("POST /sms", function() {
             expect(200).
             end(function(err, res) {
               if (err) { return done(err); }
-              expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>You can pay now and skip court. Just call (404) 658-6940 or visit court.atlantaga.gov. \n\nOtherwise, your court date is Thursday, Mar 26th at 01:00:00 PM, in courtroom CNVCRT.</Sms></Response>');
+              expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>You can pay now and skip court. Just call (907) XXX-XXXX or visit www.courtrecords.alaska.gov. \n\nOtherwise, your court date is Thursday, Mar 26th at 01:00:00 PM, in courtroom CNVCRT.</Sms></Response>');
               done();
             });
         });
@@ -237,7 +237,7 @@ describe("POST /sms", function() {
             expect(200).
             end(function(err, res) {
               if (err) { return done(err); }
-              expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sorry, we couldn&apos;t find that court case. Please call us at (404) 954-7914.</Sms></Response>');
+              expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sorry, we couldn&apos;t find that court case. Please call us at (907) XXX-XXXX.</Sms></Response>');
               expect(getConnectCookie().askedQueued).to.equal(undefined);
               expect(getConnectCookie().askedReminder).to.equal(undefined);
               expect(getConnectCookie().citationId).to.equal(undefined);
@@ -285,7 +285,7 @@ describe("POST /sms", function() {
           send(params).
           expect(200).
           end(function(err, res) {
-            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sounds good. We&apos;ll text you a day before your case. Call us at (404) 954-7914 with any other questions.</Sms></Response>');
+            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sounds good. We&apos;ll text you a day before your case. Call us at (907) XXX-XXXX with any other questions.</Sms></Response>');
             expect(getConnectCookie().askedReminder).to.equal(false);
             done();
           });
@@ -317,7 +317,7 @@ describe("POST /sms", function() {
           send(params).
           expect(200).
           end(function(err, res) {
-            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Alright, no problem. See you on your court date. Call us at (404) 954-7914 with any other questions.</Sms></Response>');
+            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Alright, no problem. See you on your court date. Call us at (907) XXX-XXXX with any other questions.</Sms></Response>');
             expect(getConnectCookie().askedReminder).to.equal(false);
             done();
           });
@@ -361,7 +361,7 @@ describe("POST /sms", function() {
           send(params).
           expect(200).
           end(function(err, res) {
-            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sounds good. We&apos;ll text you in the next 14 days. Call us at (404) 954-7914 with any other questions.</Sms></Response>');
+            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>Sounds good. We&apos;ll text you in the next 14 days. Call us at (907) XXX-XXXX with any other questions.</Sms></Response>');
             expect(getConnectCookie().askedQueued).to.equal(false);
             done();
           });
@@ -395,7 +395,7 @@ describe("POST /sms", function() {
           send(params).
           expect(200).
           end(function(err, res) {
-            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>No problem. Call us at (404) 954-7914 with any other questions.</Sms></Response>');
+            expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Sms>No problem. Call us at (907) XXX-XXXX with any other questions.</Sms></Response>');
             expect(getConnectCookie().askedQueued).to.equal(false);
             done();
           });

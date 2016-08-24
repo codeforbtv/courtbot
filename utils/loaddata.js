@@ -6,6 +6,7 @@ var request = require('request');
 var parse = require('csv-parse');
 var Promise = require('bluebird');
 var sha1 = require('sha1');
+var city_config = require('../city_config')
 
 var Knex = require('knex');
 var knex = Knex.initialize({
@@ -25,12 +26,12 @@ var knex = Knex.initialize({
 
 var loadData = function () {
   // var yesterday = moment().subtract('days', 1).format('MMDDYYYY');
-  var url = 'http://courtrecords.alaska.gov/MAJIC/sandbox/acs_mo_event.csv';
+  var url = city_config.csv_url;
 
   console.log('Downloading latest CSV file...');
 
   return new Promise(function (resolve, reject) {
-    request.get(url, function(req, res) {
+    request.get(url, function(err, res) {
       console.log('Parsing CSV File...');
 
       if (res.statusCode == 404) {

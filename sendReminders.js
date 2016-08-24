@@ -6,7 +6,7 @@ var Promise = require('bluebird');
 
 var knex = Knex.initialize({
   client: 'pg',
-  connection: process.env.DATABASE_URL
+  connection: process.env.DATABASE_URL || 'localhost'
 });
 
 // Finds reminders for cases happening tomorrow
