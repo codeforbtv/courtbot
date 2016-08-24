@@ -9,7 +9,7 @@ var url = require('url');
 var city_config = require("../city_config");
 
 var Knex = require('knex');
-var knex = Knex.initialize({
+var knex = Knex({
   client: 'pg',
   connection: process.env.DATABASE_URL || 'localhost'
 });

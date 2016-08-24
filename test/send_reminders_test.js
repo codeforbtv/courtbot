@@ -12,7 +12,7 @@ var moment = require("moment");
 
 var db = require('../db');
 var Knex = require('knex');
-var knex = Knex.initialize({
+var knex = Knex({
   client: 'pg',
   connection: process.env.DATABASE_URL || 'localhost'
 });

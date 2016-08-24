@@ -4,7 +4,7 @@ var twilio = require('twilio');
 var client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 var Promise = require('bluebird');
 
-var knex = Knex.initialize({
+var knex = Knex({
   client: 'pg',
   connection: process.env.DATABASE_URL || 'localhost'
 });
@@ -49,7 +49,7 @@ function sendReminderMessages(reminders) {
         knex('reminders')
           .where('reminder_id', '=', reminder.reminder_id)
           .update({'sent': true})
-          .exec(function(err, results) {
+          .asCallback(function(err, results) {
             if (err) {
               console.log(err);
             }

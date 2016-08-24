@@ -4,7 +4,7 @@ var twilio = require('twilio');
 var client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 var db = require('./db.js');
 var Promise = require('bluebird');
-var knex = Knex.initialize({
+var knex = Knex({
   client: 'pg',
   connection: process.env.DATABASE_URL || 'localhost'
 });
@@ -51,7 +51,7 @@ function sendQueuedMessage(queued) {
             knex('queued')
               .where('queued_id', '=', queuedCitation.queued_id)
               .update({'sent': true})
-              .exec(function(err, results) {
+              .asCallback(function(err, results) {
                 if (err) {
                   console.log(err);
                 }
@@ -72,7 +72,7 @@ function sendQueuedMessage(queued) {
             knex('queued')
               .where('queued_id', '=', queuedCitation.queued_id)
               .update({'sent': true})
-              .exec(function(err, results) {
+              .asCallback(function(err, results) {
                 if (err) {
                   console.log(err);
                 }

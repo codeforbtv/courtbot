@@ -1,4 +1,4 @@
-var exec = require('child_process').exec;
+var exec = require('child_process').asCallback;
 
 console.log("Reseting courtbot_test");
 
