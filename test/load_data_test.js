@@ -25,9 +25,11 @@ describe("Loading of Data", function() {
   });
 
   describe("With a 404 on the CSV", function() {
-    nock(domain)
-      .get(path)
-      .reply(404);
+    before(function() {
+      nock(domain)
+        .get(path)
+        .reply(404);
+    })
 
     it("hits the error callback with a 404 message", function() {
       return require("../utils/loaddata")().then(assert.failed, function(err) {
@@ -40,9 +42,7 @@ describe("Loading of Data", function() {
     beforeEach(function() {
       nock(domain)
         .get(path)
-        .reply(200, function() {
-          return fs.createReadStream('test/fixtures/codeamerica.03012015.csv');
-        });
+        .replyWithFile(200, __dirname + '/fixtures/codeamerica.03012015.csv');
     });
 
     it("hits the success callback correctly", function() {
