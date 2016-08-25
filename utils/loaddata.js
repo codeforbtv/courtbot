@@ -7,11 +7,12 @@ var parse = require('csv-parse');
 var Promise = require('bluebird');
 var sha1 = require('sha1');
 var city_config = require('../city_config')
+require('dotenv').config();
 
 var Knex = require('knex');
 var knex = Knex({
   client: 'pg',
-  connection: process.env.DATABASE_URL || 'localhost',
+  connection: process.env.DATABASE_URL,
   pool: {
     min: 0,
     max: 7,
