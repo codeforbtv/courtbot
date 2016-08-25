@@ -1,0 +1,9 @@
+language: node_js
+services:
+  - postgresql
+env:
+- DATABASE_URL=postgres://localhost:5432/courtbot
+before_script:
+  - psql -c 'create database courtbot;' -U postgres
+  - cp .env.sample .env
+  - npm run dbsetup
