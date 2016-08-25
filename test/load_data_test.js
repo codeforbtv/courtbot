@@ -11,7 +11,7 @@ var city_config = require("../city_config");
 var Knex = require('knex');
 var knex = Knex({
   client: 'pg',
-  connection: process.env.DATABASE_URL || 'localhost'
+  connection: process.env.DATABASE_URL
 });
 
 var url_obj = url.parse(city_config.csv_url)
