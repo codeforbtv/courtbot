@@ -92,7 +92,9 @@ app.post('/sms', questionAskedMiddleware, function(req, res, next) {
     handleReminderResponse(match);
   } else {
     console.log("No session, checking queue database");
-    db.findAskedQueued(req.body.From, function(data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+    db.findAskedQueued(req.body.From, function(err, data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+      if (err) return next(err);
+
       console.log("dn.findAskedQueue result: " + JSON.stringify(data) + "data.length: " + data.length);
       if (data.length == 1) { //Only respond if we found one queue response "session"
         var match = data[0];
