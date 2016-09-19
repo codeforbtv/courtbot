@@ -53,7 +53,7 @@ app.get('/cases', function(req, res) {
 });
 
 // Respond to text messages that come in from Twilio
-app.post('/sms', function(req, res) {
+app.post('/sms', function(req, res, next) {
   var twiml = new twilio.TwimlResponse();
   var text = req.body.Body.toUpperCase();
 
@@ -98,12 +98,16 @@ app.post('/sms', function(req, res) {
       db.addQueued({
         citationId: req.session.citationId,
         phone: req.body.From
-      }, function(err, data) {});
+      }, function(err, data) {
+          if (err) {
+              next(err);
+          }
 
-      twiml.sms('OK. We will keep checking for up to ' + process.env.QUEUE_TTL_DAYS + ' days. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.');
-      req.session.askedQueued = false;
-      res.send(twiml.toString());
-      return;
+          twiml.sms('OK. We will keep checking for up to ' + process.env.QUEUE_TTL_DAYS + ' days. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.');
+          req.session.askedQueued = false;
+          res.send(twiml.toString());
+          return;
+      });
     } else if (text === 'NO' || text ==='N') {
       twiml.sms('OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.');
       req.session.askedQueued = false;
@@ -153,6 +157,21 @@ var cleanupName = function(name) {
 
   return name;
 };
+
+
+// Error handling Middleware
+app.use(function (err, req, res, next) {
+    if (!res.headersSent) {
+        // during development, return the trace to the client for
+        // helpfulness
+        if (app.settings.env !== 'production') {
+            return res.status(500).send(err.stack)
+        }
+
+        return res.status(500).send('Sorry, internal server error')
+    }
+})
+
 
 var port = Number(process.env.PORT || 5000);
 app.listen(port, function() {
