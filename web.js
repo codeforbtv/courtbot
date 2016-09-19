@@ -53,7 +53,17 @@ app.get('/cases', function(req, res) {
 });
 
 // Respond to text messages that come in from Twilio
-app.post('/sms', function(req, res, next) {
+function questionAskedMiddleware(req, res, next) {
+  db.findAskedQueued(req.body.From, function(data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+    console.log("dn.findAskedQueue result: " + JSON.stringify(data) + "data.length: " + data.length);
+    if (data.length == 1) { //Only respond if we found one queue response "session"
+      var match = data[0];
+      console.log("Handling reminder response");
+     handleReminderResponse(match);
+    }
+  });
+}
+app.post('/sms', questionAskedMiddleware, function(req, res, next) {
   var twiml = new twilio.TwimlResponse();
   var text = req.body.Body.toUpperCase();
 
