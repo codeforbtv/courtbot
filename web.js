@@ -54,14 +54,12 @@ app.get('/cases', function(req, res) {
 
 // Respond to text messages that come in from Twilio
 function questionAskedMiddleware(req, res, next) {
-  db.findAskedQueued(req.body.From, function(err, data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+  db.findAskedQueued(req.body.From, function(err, data) {
     if (err) return next(err);
 
     console.log("dn.findAskedQueue result: " + JSON.stringify(data) + "data.length: " + data.length);
-    if (data.length == 1) {
-      req.session.askedReminder = true;
-      req.session.match = data[0];
-    }
+    if (data.length == 1) req.questionAsked = true;
 
     next();
   });
@@ -90,22 +88,9 @@ app.post('/sms', questionAskedMiddleware, function(req, res, next) {
     }
   }
 
-  if (req.session.askedReminder) {
+  if (req.session.askedReminder || req.questionAsked) {
     var match = req.session.match;
-    handleReminderResponse(match);
-  } else {
-    console.log("No session, checking queue database");
-    db.findAskedQueued(req.body.From, function(err, data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
-      if (err) return next(err);
-
-      console.log("dn.findAskedQueue result: " + JSON.stringify(data) + "data.length: " + data.length);
-      if (data.length == 1) { //Only respond if we found one queue response "session"
-        var match = data[0];
-        console.log("Handling reminder response");
-       handleReminderResponse(match);
-      }
-    });
-    console.log("CONITNUING");
+    return handleReminderResponse(match);
   }
 
   if (req.session.askedQueued) {
@@ -114,9 +99,7 @@ app.post('/sms', questionAskedMiddleware, function(req, res, next) {
         citationId: req.session.citationId,
         phone: req.body.From
       }, function(err, data) {
-          if (err) {
-              next(err);
-          }
+          if (err) return next(err);
 
           twiml.sms('OK. We will keep checking for up to ' + process.env.QUEUE_TTL_DAYS + ' days. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.');
           req.session.askedQueued = false;
