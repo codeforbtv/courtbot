@@ -54,13 +54,16 @@ app.get('/cases', function(req, res) {
 
 // Respond to text messages that come in from Twilio
 function questionAskedMiddleware(req, res, next) {
-  db.findAskedQueued(req.body.From, function(data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+  db.findAskedQueued(req.body.From, function(err, data) {  // Is this a response to a queue-triggered SMS? If so, "session" is stored in queue record
+    if (err) return next(err);
+
     console.log("dn.findAskedQueue result: " + JSON.stringify(data) + "data.length: " + data.length);
-    if (data.length == 1) { //Only respond if we found one queue response "session"
-      var match = data[0];
-      console.log("Handling reminder response");
-     handleReminderResponse(match);
+    if (data.length == 1) {
+      req.session.askedReminder = true;
+      req.session.match = data[0];
     }
+
+    next();
   });
 }
 app.post('/sms', questionAskedMiddleware, function(req, res, next) {
