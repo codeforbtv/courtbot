@@ -59,6 +59,7 @@ function processCitationMessage(queued) {
     if (queued.citationFound) {
       var name = strings.scrubName(queued.relatedCitation.defendant),
           datetime = dates.fromUtc(queued.relatedCitation.date);
+      console.log("Found citation for " + name + " at " + datetime.toString());
 
       messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.greetingMessage(name, datetime, queued.relatedCitation.room))
         .then(updateSentWithReminder(queued.queuedMessage.queued_id))
