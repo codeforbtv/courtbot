@@ -39,6 +39,7 @@ module.exports = {
 	 * @return {string} message body.
 	 */
 	reminder: function(reminder) {
+		console.log("In message.reminder");
 		var msg = 		"Reminder: It appears you have a court hearing tomorrow at " +
 			dates.fromUtc(reminder.date).format("h:mm A") +
 			" at " + reminder.room +
@@ -59,6 +60,7 @@ module.exports = {
 	 * @return {Promise} Promise to send message.
 	 */
 	send: function(to, from, body, resolver) {
+		console.log("Sending message: to: " + to + " from: " + from + " body: " + body);
 		return new Promise(function(resolve, reject) {
 			client.sendMessage({to: to, from: from, body: body}, resolver || genericResolver(resolve, "client.message"));			
 		});

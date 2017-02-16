@@ -48,6 +48,7 @@ var sendReminder = function(reminder) {
 
     messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder))
       .then(function() {
+        console.log("After message send");
         resolve(reminder);
       });
   });
