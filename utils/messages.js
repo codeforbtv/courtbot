@@ -62,7 +62,9 @@ module.exports = {
 	send: function(to, from, body, resolver) {
 		console.log("Sending message: to: " + to + " from: " + from + " body: " + body);
 		return new Promise(function(resolve, reject) {
-			client.sendMessage({to: to, from: from, body: body}, resolver || genericResolver(resolve, "client.message"));			
+			console.log("Before client.sendMessage");
+			client.sendMessage({to: to, from: from, body: body}, resolver || genericResolver(resolve, "client.message"));
+			console.log("After client.sendMessage");
 		});
 	}
 
