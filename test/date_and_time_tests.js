@@ -58,7 +58,7 @@ describe("for a given date", function() {
         };
 
         // test() overwrites DB data with each iteration so it's important that the tests are done sequentially
-        return TEST_HOURS.reduce((p, hr) => p.then(r=> test(hr)), Promise.resolve())
+        return TEST_HOURS.reduce((p, hr) => p.then(r => test(hr)), Promise.resolve())
     });
 });
 
