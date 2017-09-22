@@ -148,7 +148,6 @@ function send(to, from, body) {
         to: to,
         from: from
     })
-    return Promise.resolve();
 }
 
 module.exports = {
