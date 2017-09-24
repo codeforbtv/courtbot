@@ -11,7 +11,7 @@ module.exports = {
 	 * @return {string} timezone
 	 */
 	timezone: function() {
-		return process.env.TIMEZONE;
+		return process.env.TZ;
 	},
 
 	/**
@@ -34,7 +34,7 @@ module.exports = {
 		} else {
 			dt = moment().format("YYYY-MM-DD");      // Default to today
 		}
-		var tz = moment.tz(dt, process.env.TIMEZONE).format('Z');
+		var tz = moment.tz(dt, process.env.TZ).format('Z');
 		//console.log("Date: " + moment(dt).format("YYYY-MM-DD") + " Offset: " + tz);
 		return tz;
 	},

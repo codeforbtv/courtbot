@@ -1,10 +1,9 @@
 /* eslint "no-console": "off" */
 
 const db = require('./db.js');
-const dates = require('./utils/dates');
-const strings = require('./utils/strings');
 const messages = require('./utils/messages');
 const manager = require('./utils/db/manager');
+const moment = require("moment-timezone");
 
 const knex = manager.knex;
 
@@ -14,9 +13,9 @@ const knex = manager.knex;
  * @return {Promise} Promise to return an array of queued messages that have not been sent
  */
 function findQueued() {
-  return knex('queued')
+    return knex('queued')
     .where('sent', false)
-    .select();
+    .select('*', knex.raw(`created_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day' as hasSatTooLong`));
 }
 
 /**
@@ -26,11 +25,11 @@ function findQueued() {
  * @return {Promise} promise to retrieve citation data.
  */
 function retrieveCitation(queuedMessage) {
-  return db.findCitation(queuedMessage.citation_id)
+    return db.findCitation(queuedMessage.citation_id)
     .then(results => ({
-      queuedMessage,
-      citationFound: results.length > 0,
-      relatedCitation: (results.length ? results[0] : false),
+        queuedMessage,
+        citationFound: results.length > 0,
+        relatedCitation: (results.length ? results[0] : false),
     }));
 }
 
@@ -41,11 +40,12 @@ function retrieveCitation(queuedMessage) {
  * @return {Promise} function to recieve results and Promise to perform update.
  */
 function updateSentWithReminder(queuedId) {
-  return knex('queued')
+    return knex('queued')
     .where('queued_id', '=', queuedId)
-    .update({ sent: true,
-      asked_reminder: true,
-      asked_reminder_at: dates.now().format(),
+    .update({
+        sent: true,
+        asked_reminder: true,
+        asked_reminder_at: knex.raw('now()'),
     });
 }
 
@@ -56,7 +56,7 @@ function updateSentWithReminder(queuedId) {
  * @return {function} function to recieve results and Promise to perform update.
  */
 function updateSentWithoutReminder(queuedId) {
-  return knex('queued')
+    return knex('queued')
     .where('queued_id', '=', queuedId)
     .update({ sent: true });
 }
@@ -72,18 +72,17 @@ function updateSentWithoutReminder(queuedId) {
  * @return {Promise} promise to process queued message (if applicable)
  */
 function processCitationMessage(queued) {
-  const phone = db.decryptPhone(queued.queuedMessage.phone);
-  if (queued.citationFound) {
-    const name = strings.scrubName(queued.relatedCitation.defendant);
-    const datetime = dates.fromUtc(queued.relatedCitation.date);
-    return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItAskForReminder(true, name, datetime, queued.relatedCitation.room))
-      .then(() => updateSentWithReminder(queued.queuedMessage.queued_id));
-  } else if (dates.hasSatTooLong(queued.queuedMessage.created_at)) {
-    return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong())
-      .then(() => updateSentWithoutReminder(queued.queuedMessage.queued_id));
-  }
-
-  return false;
+    const phone = db.decryptPhone(queued.queuedMessage.phone);
+    if (queued.citationFound) {
+        const match = queued.relatedCitation
+        match.date = moment(match.date)
+        return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItAskForReminder(true, match))
+        .then(() => updateSentWithReminder(queued.queuedMessage.queued_id));
+    } else if (queued.hasSatTooLong) {
+        return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong())
+        .then(() => updateSentWithoutReminder(queued.queuedMessage.queued_id));
+    }
+    return false;
 }
 
 /**
@@ -92,11 +91,11 @@ function processCitationMessage(queued) {
  * @return {Promise} Promise to process all queued messages.
  */
 function sendQueued() {
-  return findQueued()
+    return findQueued()
     .then(resultsArray => Promise.all(resultsArray.map(r => retrieveCitation(r))))
     .then(resultsArray => Promise.all(resultsArray.map(r => processCitationMessage(r))));
 }
 
 module.exports = {
-  sendQueued,
+    sendQueued,
 };

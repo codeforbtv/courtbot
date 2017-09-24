@@ -3,8 +3,6 @@
 const db = require('./db.js');
 const manager = require('./utils/db/manager');
 const messages = require('./utils/messages');
-const dates = require('./utils/dates');
-
 const knex = manager.knex;
 
 /**
@@ -13,19 +11,10 @@ const knex = manager.knex;
  * @return {array} Promise to return results
  */
 function findReminders() {
-  // database is converting dates to UTC, so we need to
-  // convert our comparison date to UTC prior to comparing.
-  const todayMidnight = dates.now().add('1', 'days').hour(0).minute(0)
-    .utcOffset(0)
-    .format();
-  const tomorrowMidnight = dates.now().add('2', 'days').hour(0).minute(0)
-    .utcOffset(0)
-    .format();
-  return knex('reminders')
+    return knex('reminders')
     .where('sent', false)
     .join('cases', 'reminders.case_id', '=', 'cases.id')
-    .whereRaw(`(date (cases.date at time zone '${process.env.TIMEZONE}') <= date '${tomorrowMidnight}' at time zone '${process.env.TIMEZONE}')
-                AND (date (cases.date at time zone '${process.env.TIMEZONE}') > date '${todayMidnight}' at time zone '${process.env.TIMEZONE}')`)
+    .whereRaw(`tstzrange(TIMESTAMP 'tomorrow', TIMESTAMP 'tomorrow' + interval '1 day') @> cases.date`)
     .select();
 }
 
@@ -36,10 +25,8 @@ function findReminders() {
  * @return {Promise}  Promise to send reminders.
  */
 function sendReminder(reminder) {
-  const phone = db.decryptPhone(reminder.phone);
-  console.log('Phone: ', phone);
-
-  return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder))
+    const phone = db.decryptPhone(reminder.phone);
+    return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder))
     .then(() => reminder);
 }
 
@@ -50,8 +37,7 @@ function sendReminder(reminder) {
  * @return {Promise} Promise to update reminder.
  */
 function updateReminderStatus(reminder) {
-  console.log('Reminder sent to ', reminder.phone);
-  return knex('reminders')
+    return knex('reminders')
     .where('reminder_id', '=', reminder.reminder_id)
     .update({ sent: true });
 }
@@ -65,12 +51,12 @@ function updateReminderStatus(reminder) {
  * @return {Promise} Promise to send messages and update statuses.
  */
 function sendReminders() {
-  return findReminders()
+    return findReminders()
     .then(resultArray => Promise.all(resultArray.map(r => sendReminder(r))))
     .then(resultArray => Promise.all(resultArray.map(r => updateReminderStatus(r))));
 }
 
 module.exports = {
-  findReminders,
-  sendReminders,
+    findReminders,
+    sendReminders,
 };

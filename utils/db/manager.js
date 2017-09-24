@@ -5,8 +5,13 @@ const dates = require('../dates');
 const db_connections = require('./db_connections'); /* eslint camelcase: "off" */
 const knex = require('knex')(db_connections[process.env.NODE_ENV || 'development']);
 
+/**
+ * Postgres returns the absolute date string with local offset detemined by its timezone setting.
+ * Knex by default creates a javascript Date object from this string.
+ * This function overrides knex's default to instead return the raw date string returned by Postgres.
+ */
 const TIMESTAMPTZ_OID = 1184;
-require('pg').types.setTypeParser(TIMESTAMPTZ_OID, dates.isoToUtc);
+require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => date);
 
 /**
  * 1.) Create indexing function for cases table using this strategy: http://stackoverflow.com/a/18405706

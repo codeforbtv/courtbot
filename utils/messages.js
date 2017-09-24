@@ -1,6 +1,5 @@
 const twilio = require('twilio');
-const dates = require('./dates');
-
+const moment = require('moment-timezone');
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 /**
@@ -13,7 +12,18 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
  * @return {String} the msg with whitespace condensed to a single space
  */
 function normalizeSpaces(msg) {
-  return msg.replace(/\s\s+/g, ' ');
+    return msg.replace(/\s\s+/g, ' ');
+}
+
+/**
+ * Change FIRST LAST to First Last
+ *
+ * @param  {String} name name to manipulate
+ * @return {String} propercased name
+ */
+function cleanupName(name) {
+    return name.trim()
+    .replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
 
 /**
@@ -22,7 +32,7 @@ function normalizeSpaces(msg) {
  * @return {String} message.
  */
 function forMoreInfo() {
-  return normalizeSpaces(`OK. You can always go to ${process.env.COURT_PUBLIC_URL}
+    return normalizeSpaces(`OK. You can always go to ${process.env.COURT_PUBLIC_URL}
     for more information about your case and contact information.`);
 }
 
@@ -35,22 +45,21 @@ function forMoreInfo() {
  * @param  {string} room room of court appearance.
  * @return {String} message.
  */
-function foundItAskForReminder(includeSalutation, name, datetime, room) {
-  const salutation = `Hello from the ${process.env.COURT_NAME}. `;
+function foundItAskForReminder(includeSalutation, match) {
+    const salutation = `Hello from the ${process.env.COURT_NAME}. `;
+    const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
+        ${(match.today ? 'today' : `on ${match.date.format('ddd, MMM Do')}`)}
+        at ${match.date.format('h:mm A')}, at ${match.room}.`;
 
-  const caseInfo = `We found a case for ${name} scheduled
-    ${(datetime.isSame(dates.now(), 'd') ? 'today' : `on ${datetime.format('ddd, MMM Do')}`)}
-    at ${datetime.format('h:mm A')}, at ${room}.`;
+    let futureHearing = '';
+    if (match.has_past) {
+        futureHearing = ' a future hearing';
+    } else if (match.today) { // Hearing today
+        futureHearing = ' a future hearing';
+    }
 
-  let futureHearing = '';
-  if ((datetime.diff(dates.now()) > 0) && (datetime.isSame(dates.now(), 'd'))) { // Hearing today
-    futureHearing = ' a future hearing';
-  } else if (datetime.diff(dates.now()) <= 0) { // Hearing already happened
-    futureHearing = ' a future hearing';
-  }
-
-  return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
-    Would you like a courtesy reminder the day before${futureHearing}? (reply YES or NO)`);
+    return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
+        Would you like a courtesy reminder the day before${futureHearing}? (reply YES or NO)`);
 }
 
 /**
@@ -59,7 +68,7 @@ function foundItAskForReminder(includeSalutation, name, datetime, room) {
  * @return {String} message.
  */
 function iAmCourtBot() {
-  return 'Hello, I am Courtbot. I have a heart of justice and a knowledge of court cases.';
+    return 'Hello, I am Courtbot. I have a heart of justice and a knowledge of court cases.';
 }
 
 /**
@@ -68,8 +77,8 @@ function iAmCourtBot() {
  * @return {String} message.
  */
 function invalidCaseNumber() {
-  return normalizeSpaces(`Couldn't find your case. Case identifier should be 6 to 25
-    numbers and/or letters in length.`);
+    return normalizeSpaces(`Couldn't find your case. Case identifier should be 6 to 25
+        numbers and/or letters in length.`);
 }
 
 /**
@@ -78,10 +87,10 @@ function invalidCaseNumber() {
  * @return {String} message.
  */
 function notFoundAskToKeepLooking() {
-  return normalizeSpaces(`Could not find a case with that number. It can take
-    several days for a case to appear in our system. Would you like us to keep
-    checking for the next ${process.env.QUEUE_TTL_DAYS} days and text you if
-    we find it? (reply YES or NO)`);
+    return normalizeSpaces(`Could not find a case with that number. It can take
+        several days for a case to appear in our system. Would you like us to keep
+        checking for the next ${process.env.QUEUE_TTL_DAYS} days and text you if
+        we find it? (reply YES or NO)`);
 }
 
 /**
@@ -91,11 +100,11 @@ function notFoundAskToKeepLooking() {
  * @return {string} message
  */
 function reminder(occurrence) {
-  return normalizeSpaces(`Reminder: It appears you have a court hearing tomorrow at
-    ${dates.fromUtc(occurrence.date).format('h:mm A')} at ${occurrence.room}.
-    You should confirm your hearing date and time by going to
-    ${process.env.COURT_PUBLIC_URL}.
-    - ${process.env.COURT_NAME}`);
+    return normalizeSpaces(`Reminder: It appears you have a court hearing tomorrow at
+        ${moment(occurrence.date).format('h:mm A')} at ${occurrence.room}.
+        You should confirm your hearing date and time by going to
+        ${process.env.COURT_PUBLIC_URL}.
+        - ${process.env.COURT_NAME}`);
 }
 
 /**
@@ -104,9 +113,9 @@ function reminder(occurrence) {
  * @return {string} Not Found Message
  */
 function unableToFindCitationForTooLong() {
-  return normalizeSpaces(`We haven't been able to find your court case.
-  You can go to ${process.env.COURT_PUBLIC_URL} for more information.
-  - ${process.env.COURT_NAME}`);
+    return normalizeSpaces(`We haven't been able to find your court case.
+        You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+        - ${process.env.COURT_NAME}`);
 }
 
 /**
@@ -115,9 +124,9 @@ function unableToFindCitationForTooLong() {
  * @return {string} message
  */
 function weWillKeepLooking() {
-  return normalizeSpaces(`OK. We will keep checking for up to ${process.env.QUEUE_TTL_DAYS} days.
-    You can always go to ${process.env.COURT_PUBLIC_URL} for more information about
-    your case and contact information.`);
+    return normalizeSpaces(`OK. We will keep checking for up to ${process.env.QUEUE_TTL_DAYS} days.
+        You can always go to ${process.env.COURT_PUBLIC_URL} for more information about
+        your case and contact information.`);
 }
 
 /**
@@ -126,10 +135,10 @@ function weWillKeepLooking() {
  * @return {String} message.
  */
 function weWillRemindYou() {
-  return normalizeSpaces(`Sounds good. We will attempt to text you a courtesy reminder
-    the day before your hearing date. Note that court schedules frequently change.
-    You should always confirm your hearing date and time by going
-    to ${process.env.COURT_PUBLIC_URL}.`);
+    return normalizeSpaces(`Sounds good. We will attempt to text you a courtesy reminder
+        the day before your hearing date. Note that court schedules frequently change.
+        You should always confirm your hearing date and time by going
+        to ${process.env.COURT_PUBLIC_URL}.`);
 }
 
 
@@ -143,20 +152,21 @@ function weWillRemindYou() {
  * @return {Promise} Promise to send message.
  */
 function send(to, from, body) {
-  return new Promise((resolve) => {
-    client.sendMessage({ to, from, body }, resolve);
-  });
+    return new Promise((resolve) => {
+        client.sendMessage({ to, from, body }, resolve);
+    });
 }
 
 module.exports = {
-  forMoreInfo,
-  foundItAskForReminder,
-  iAmCourtBot,
-  invalidCaseNumber,
-  notFoundAskToKeepLooking,
-  weWillKeepLooking,
-  weWillRemindYou,
-  reminder,
-  send,
-  unableToFindCitationForTooLong,
+    forMoreInfo,
+    foundItAskForReminder,
+    iAmCourtBot,
+    invalidCaseNumber,
+    notFoundAskToKeepLooking,
+    weWillKeepLooking,
+    weWillRemindYou,
+    reminder,
+    send,
+    unableToFindCitationForTooLong,
+    cleanupName,
 };
