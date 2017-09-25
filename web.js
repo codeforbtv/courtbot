@@ -22,7 +22,6 @@ app.use(cookieSession({
     secret: process.env.COOKIE_SECRET
 }));
 
-
 /* Serve testing page on which you can impersonate Twilio
    (but not in production) */
 if (app.settings.env === 'development' || app.settings.env === 'test') {
@@ -49,7 +48,7 @@ app.get('/', (req, res) => {
    an exact citation match */
 app.get('/cases', (req, res, next) => {
     if (!req.query || !req.query.q) {
-        return res.send(400);
+        return res.sendStatus(400);
     }
 
   return db.fuzzySearch(req.query.q)
@@ -179,8 +178,6 @@ app.post('/sms', askedReminderMiddleware, (req, res, next) => {
             }
         } else {
             const match = results[0];
-            match.date = moment(match.date);
-
             twiml.message(messages.foundItAskForReminder(false, match));
 
             req.session.match = match;

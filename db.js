@@ -44,9 +44,8 @@ function findCitation(citation) {
     .select('*', knex.raw(`
         CURRENT_DATE = date_trunc('day', date) as today,
         date < CURRENT_TIMESTAMP as has_past
-    `));
+    `))
 }
-
 // Find queued citations that we have asked about adding reminders
 function findAskedQueued(phone) {
     // Filter for new ones. If too old, user probably missed the message (same timeframe

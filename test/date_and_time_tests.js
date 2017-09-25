@@ -3,10 +3,9 @@ require('dotenv').config();
 const findReminders = require("../sendReminders.js").findReminders;
 const expect = require("chai").expect;
 const manager = require("../utils/db/manager");
-const tk = require('timekeeper');
 const db = require('../db');
 const knex = manager.knex;
-
+var moment = require("moment-timezone");
 const dates = require("../utils/dates"),
     TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
     TEST_HOURS = [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,23.75,24,24.15,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49],
@@ -16,18 +15,12 @@ describe("for a given date", function() {
     const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
 
     beforeEach(function() {
-        tk.freeze(time);
-
         return manager.ensureTablesExist()
         .then(clearTable("cases"))
         .then(clearTable("reminders"))
         .then(loadCases([turnerData()]))
         .then(addTestReminder)
     });
-
-    afterEach(function(){
-        tk.reset();
-    })
 
     it("datetime in table matches datetime on the client", function() {
         return knex.select("*").from("cases").where("date", TEST_UTC_DATE)
@@ -38,8 +31,8 @@ describe("for a given date", function() {
         this.timeout(5000); // This may take a while
         const test = function(hr) {
             console.log("hr: ", hr)
-            const testDateTime = dates.now().add(1, "days").hour(0).add(hr, "hours");
-            console.log("Now: ",dates.now().format());
+            const testDateTime = moment().add(1, "days").hour(0).minute(0).add(hr, "hours");
+            console.log("Now: ", moment().format());
 
             return updateCaseDate(TEST_CASE_ID, testDateTime)
             .then(findReminders)

@@ -6,6 +6,7 @@ const fs = require('fs');
 const expect = require('chai').expect;
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
+const Keygrip = require('keygrip')
 const tk = require('timekeeper');
 const Session = require('supertest-session')({
   app: require('../web')
@@ -19,6 +20,7 @@ const moment = require('moment-timezone');
 const knex = manager.knex;
 
 const TEST_UTC_DATE = "2015-03-27T13:00:00" + dates.timezoneOffset("2015-03-27");
+const keys = Keygrip([process.env.COOKIE_SECRET])
 
 let sess;
 
@@ -79,7 +81,6 @@ describe("GET /cases", function() {
             .expect(200)
             .end(function(err, res) {
                 if (err) return done(err);
-                console.log("*** Turner ", turnerDataAsObject(1))
                 expect([sortObject(JSON.parse(res.text)[0]),sortObject(JSON.parse(res.text)[1])]).to.deep.equal([turnerDataAsObject(1), turnerDataAsObject(2)]);
                 done();
             });
@@ -131,18 +132,21 @@ describe("GET /cases", function() {
 });
 
 describe("POST /sms", function() {
+    const  new_date = moment().add(5, 'days');
+
     beforeEach(function() {
         sess = new Session();
-        const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
-        tk.freeze(time);
+        //const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
+        //tk.freeze(time);
+       // const  new_date = moment().add(5, 'days').toISOString();
         return knex('cases').del()
         .then(() => knex('reminders').del())
         .then(() => knex('queued').del())
-        .then(() =>  knex('cases').insert([turnerData()]))
+        .then(() =>  knex('cases').insert([turnerData('', new_date)]))
     })
     afterEach(function () {
         sess.destroy();
-        tk.reset();
+        //tk.reset();
       });
     context("without session set", function() {
         context("with 1 matching court case", function() {
@@ -150,7 +154,7 @@ describe("POST /sms", function() {
 
             beforeEach(function() {
                 return knex('cases').del()
-                .then(() => knex('cases').insert([turnerData("")]))
+                .then(() => knex('cases').insert([turnerData("", new_date)]))
             });
 
             it("says there is a court case and prompts for reminder", function(done) {
@@ -159,7 +163,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     if (err) return done(err);
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on Fri, Mar 27th at 1:00 PM, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>');
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on ${new_date.format('ddd, MMM Do')} at ${new_date.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>`);
                     done();
                 });
             });
@@ -173,7 +177,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     if(err) return done(err);
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on Fri, Mar 27th at 1:00 PM, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>');
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on ${new_date.format('ddd, MMM Do')} at ${new_date.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>`);
                     done();
                 });
             });
@@ -187,7 +191,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     if(err) return done(err);
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on Fri, Mar 27th at 1:00 PM, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>');
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on ${new_date.format('ddd, MMM Do')} at ${new_date.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>`);
                     done();
                 });
             });
@@ -201,7 +205,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     if(err) return done(err);
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on Fri, Mar 27th at 1:00 PM, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>');
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled on ${new_date.format('ddd, MMM Do')} at ${new_date.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before? (reply YES or NO)</Message></Response>`);
                     done();
                 });
             });
@@ -214,7 +218,7 @@ describe("POST /sms", function() {
                     if (err)  return done(err);
                     expect(getConnectCookie().askedQueued).to.equal(false);
                     expect(getConnectCookie().askedReminder).to.equal(true);
-                    expect(getConnectCookie().match).to.deep.equal(rawTurnerDataAsObject(""));
+                    expect(getConnectCookie().match).to.deep.equal(rawTurnerDataAsObject("", new_date.toISOString()));
                     done();
                 });
             });
@@ -273,14 +277,15 @@ describe("POST /sms", function() {
             const params = { Body: "4928456", From: "+12223334444"  };
 
             it("says case is same day", function(done) {
+                const caseDate = moment().add(1, "hours")
                 knex('cases').del()
-                .then(() => knex('cases').insert([turnerData("", dates.now().add(1, "hours"))]))
+                .then(() => knex('cases').insert([turnerData("", caseDate)]))
                 .then(() => {
                     sess.post('/sms').send(params)
                     .expect(200)
                     .end(function (err, res) {
                         if (err) return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at 1:00 PM, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>');
+                        expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
                         expect(getConnectCookie().askedQueued).to.equal(false);
                         expect(getConnectCookie().askedReminder).to.equal(true);
                         expect(getConnectCookie().citationId).to.equal(undefined);
@@ -290,14 +295,15 @@ describe("POST /sms", function() {
             });
 
             it("says case is already happening (time is now)", function (done) {
+                const caseDate = moment()
                 knex('cases').del()
-                .then(() => knex('cases').insert([turnerData("", dates.now())]))
+                .then(() => knex('cases').insert([turnerData("", caseDate)]))
                 .then(() => {
                     sess.post('/sms').send(params)
                     .expect(200)
                     .end(function (err, res) {
                         if (err) return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at 12:00 PM, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>');
+                        expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
                         expect(getConnectCookie().askedQueued).to.equal(false);
                         expect(getConnectCookie().askedReminder).to.equal(true);
                         expect(getConnectCookie().citationId).to.equal(undefined);
@@ -307,14 +313,15 @@ describe("POST /sms", function() {
             });
 
             it("says case is already happening (time in the past)", function (done) {
+                const caseDate = moment().subtract(2, "hours")
                 knex('cases').del()
-                .then(() => knex('cases').insert([turnerData("", dates.now().subtract(2, "hours"))]))
+                .then(() => knex('cases').insert([turnerData("", caseDate)]))
                 .then(() => {
                     sess.post('/sms').send(params)
                     .expect(200)
                     .end(function (err, res) {
                         if (err) return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at 10:00 AM, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>');
+                        expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
                         expect(getConnectCookie().askedQueued).to.equal(false);
                         expect(getConnectCookie().askedReminder).to.equal(true);
                         expect(getConnectCookie().citationId).to.equal(undefined);
@@ -326,17 +333,12 @@ describe("POST /sms", function() {
     });
 
     context("with session.askedReminder", function() {
-    // Build json object, serialize, sign, encode
-        const cookieObj = rawTurnerDataAsObject();
-        let cookieStr = 'j:{"match":' + JSON.stringify(cookieObj) + ',"askedReminder":true}';
-        cookieStr = cookieStr + "." + crypto
-                .createHmac('sha256', process.env.COOKIE_SECRET)
-                .update(cookieStr)
-                .digest('base64')
-                .replace(/\=+$/, '');
-        cookieStr = "s:" + cookieStr;
-        // var cookieArr = ['connect.sess=s%3Aj%3A%7B%22match%22%3A%7B%22id%22%3A%22677167760f89d6f6ddf7ed19ccb63c15486a0eab%22%2C%22defendant%22%3A%22TURNER%2C%20FREDERICK%20T%22%2C%22date%22%3A%222015-03-27T00%3A00%3A00.000Z%22%2C%22time%22%3A%2201%3A00%3A00%20PM%22%2C%22room%22%3A%22CNVCRT%22%2C%22citations%22%3A%5B%7B%22id%22%3A%224928456%22%2C%22violation%22%3A%2240-8-76.1%22%2C%22description%22%3A%22SAFETY%20BELT%20VIOLATION%22%2C%22location%22%3A%2227%20DECAATUR%20ST%22%7D%5D%7D%2C%22askedReminder%22%3Atrue%7D.LJMfW%2B9Dz6BLG2mkRlMdVVnIm3V2faxF3ke7oQjYnls; Path=/; HttpOnly'];
-        const cookieArr = ['connect.sess=' + encodeURIComponent(cookieStr) + '; Path=/; HttpOnly'];
+        const  new_date = moment().add(5, 'days');
+        // Build json object, serialize, sign, encode
+        var cookieObj = {match: rawTurnerDataAsObject("", new_date), askedReminder: true};
+        var cookieb64 = new Buffer(JSON.stringify(cookieObj)).toString('base64');
+        var sig = keys.sign('session='+cookieb64);
+        var cookieArr = ['session='+cookieb64 + '; session.sig=' + sig + '; Path=/;'];
 
         describe("User responding askedReminder session", function() {
             it("YES - creates a reminder and responds appropriately", function (done) {
@@ -346,7 +348,6 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err)  return done(err);
 
-                    //expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>(1/2) Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change.</Sms><Sms>(2/2) You should always confirm your hearing date and time by going to ' + process.env.COURT_PUBLIC_URL + '</Message></Response>');
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
                     expect(getConnectCookie().askedReminder).to.equal(false);
 
@@ -357,7 +358,7 @@ describe("POST /sms", function() {
                         expect(record.phone).to.equal(db.encryptPhone('+12223334444'));
                         expect(record.case_id).to.equal('677167760f89d6f6ddf7ed19ccb63c15486a0eab');
                         expect(record.sent).to.equal(false);
-                        expect(record.original_case).to.deep.equal(rawTurnerDataAsObject("", false));
+                        expect(record.original_case).to.deep.equal(rawTurnerDataAsObject("", new_date));
                         })
                     .then(done, done)
                 });
@@ -386,7 +387,7 @@ describe("POST /sms", function() {
         beforeEach(function () {
             return knex('cases').del()
             .then(() => knex('reminders').del())
-            .then(() => knex('cases').insert([turnerData()]))
+            .then(() => knex('cases').insert([turnerData("", new_date)]))
             .then(() => knex("queued").del())
             .then(() => {
                 return knex('queued').insert({
@@ -409,7 +410,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function (err, res) {
                     if (err) return done(err);
-                    //expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>(1/2) Sounds good. We will attempt to text you a courtesy reminder the day before your case. Note that case schedules frequently change.</Sms><Sms>(2/2) You should always confirm your case date and time by going to ' + process.env.COURT_PUBLIC_URL + '</Message></Response>');
+                    const data = rawTurnerDataAsObject("", new_date)
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
                     expect(getConnectCookie().askedReminder).to.equal(false);
                     knex("reminders").select("*").groupBy("reminders.reminder_id").count('* as count')
@@ -419,7 +420,9 @@ describe("POST /sms", function() {
                         expect(record.phone).to.equal(db.encryptPhone('+12223334444'));
                         expect(record.case_id).to.equal('677167760f89d6f6ddf7ed19ccb63c15486a0eab');
                         expect(record.sent).to.equal(false);
-                        expect(record.original_case).to.deep.equal(rawTurnerDataAsObject("", false));
+                        expect(record.original_case.id).to.equal(data.id);
+                        expect(record.original_case.date).to.equal(data.date);
+                        expect(record.original_case.defendant).to.equal(data.defendant);
                         })
                     .then(done, done)
                 });
@@ -496,15 +499,10 @@ describe("POST /sms", function() {
 
 
     context("with session.askedQueued", function() {
-        // var cookieArr = ['connect.sess=s%3Aj%3A%7B%22askedQueued%22%3Atrue%2C%22citationId%22%3A%22123456%22%7D.%2FuRCxqdZogql42ti2bU0yMSOU0CFKA0kbL81MQb5o24; Path=/; HttpOnly'];
-        let cookieStr = 'j:{"citationId":"123456","askedQueued":true}';
-        cookieStr = cookieStr + "." + crypto
-            .createHmac('sha256', process.env.COOKIE_SECRET)
-            .update(cookieStr)
-            .digest('base64')
-            .replace(/\=+$/, '');
-        cookieStr = "s:" + cookieStr;
-        const cookieArr = ['connect.sess='+encodeURIComponent(cookieStr)+'; Path=/; HttpOnly'];
+        var cookieStr = '{"citationId":"123456","askedQueued":true}';
+        var cookieb64 = new Buffer(cookieStr).toString('base64');
+        var sig = keys.sign('session='+cookieb64);
+        var cookieArr = ['session='+cookieb64 + '; session.sig=' + sig + '; Path=/;'];
 
         describe("the user texts YES", function() {
             var params = { Body: " Y ", From: "+12223334444" };
@@ -596,16 +594,18 @@ function turnerDataAsObject(v,d) {
 
 function rawTurnerDataAsObject(v,d) {
     const data = turnerData(v,d);
-    data.date = d||TEST_UTC_DATE;
+    data.date = moment(d ||TEST_UTC_DATE).tz(process.env.TZ).format();
     data.citations = JSON.parse(data.citations);
+    data.today = moment(d).isSame(moment(), 'day')
+    data.has_past = moment(d).isBefore(moment())
     return data;
 }
-
 function getConnectCookie() {
-    const sessionCookie = sess.cookies.find(cookie =>  cookie.hasOwnProperty('connect.sess'))
-    const cookie = sessionCookie['connect.sess'];
-    return cookieParser.JSONCookie(cookieParser.signedCookie(cookie, process.env.COOKIE_SECRET));
-}
+    if (!sess.cookies) return {}
+    const sessionCookie =  sess.cookies.find(cookie => cookie.hasOwnProperty('session'));
+    const cookie = JSON.parse(Buffer.from(sessionCookie['session'], 'base64'));
+    return cookie
+  }
 
 function sortObject(o) {
     let sorted = {},

@@ -48,8 +48,8 @@ function forMoreInfo() {
 function foundItAskForReminder(includeSalutation, match) {
     const salutation = `Hello from the ${process.env.COURT_NAME}. `;
     const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
-        ${(match.today ? 'today' : `on ${match.date.format('ddd, MMM Do')}`)}
-        at ${match.date.format('h:mm A')}, at ${match.room}.`;
+        ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
+        at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
 
     let futureHearing = '';
     if (match.has_past) {

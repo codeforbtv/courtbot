@@ -15,7 +15,7 @@ const knex = manager.knex;
 function findQueued() {
     return knex('queued')
     .where('sent', false)
-    .select('*', knex.raw(`created_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day' as hasSatTooLong`));
+    .select('*', knex.raw(`created_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day' as has_sat_too_long`));
 }
 
 /**
@@ -78,7 +78,7 @@ function processCitationMessage(queued) {
         match.date = moment(match.date)
         return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItAskForReminder(true, match))
         .then(() => updateSentWithReminder(queued.queuedMessage.queued_id));
-    } else if (queued.hasSatTooLong) {
+    } else if (queued.queuedMessage.has_sat_too_long) {
         return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong())
         .then(() => updateSentWithoutReminder(queued.queuedMessage.queued_id));
     }
@@ -98,4 +98,5 @@ function sendQueued() {
 
 module.exports = {
     sendQueued,
+    retrieveCitation
 };
