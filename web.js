@@ -2,6 +2,8 @@
 require('dotenv').config();
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const express = require('express');
+var cookieSession = require('cookie-session')
+var bodyParser = require('body-parser')
 const logfmt = require('logfmt');
 const db = require('./db');
 const rollbar = require('rollbar');
@@ -13,10 +15,12 @@ const app = express();
 
 /* Express Middleware */
 app.use(logfmt.requestLogger());
-app.use(express.json());
-app.use(express.urlencoded());
-app.use(express.cookieParser(process.env.COOKIE_SECRET));
-app.use(express.cookieSession());
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+app.use(cookieSession({
+    name: 'session',
+    secret: process.env.COOKIE_SECRET
+}));
 
 
 /* Serve testing page on which you can impersonate Twilio
