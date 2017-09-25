@@ -1,6 +1,6 @@
 const twilio = require('twilio');
 const moment = require('moment-timezone');
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const client = new twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 /**
  * reduces whitespace to a single space
@@ -152,9 +152,11 @@ function weWillRemindYou() {
  * @return {Promise} Promise to send message.
  */
 function send(to, from, body) {
-    return new Promise((resolve) => {
-        client.sendMessage({ to, from, body }, resolve);
-    });
+    return client.messages.create({
+        body: body,
+        to: to,
+        from: from
+    })
 }
 
 module.exports = {

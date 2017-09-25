@@ -4,14 +4,15 @@ require('dotenv').config();
 const dates = require('../dates');
 const db_connections = require('./db_connections'); /* eslint camelcase: "off" */
 const knex = require('knex')(db_connections[process.env.NODE_ENV || 'development']);
-
+const moment = require('moment-timezone')
 /**
  * Postgres returns the absolute date string with local offset detemined by its timezone setting.
  * Knex by default creates a javascript Date object from this string.
- * This function overrides knex's default to instead return the raw date string returned by Postgres.
+ * This function overrides knex's default to instead returns an ISO 8601 string with local offset.
+ * For more info: https://github.com/brianc/node-pg-types
  */
 const TIMESTAMPTZ_OID = 1184;
-require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => date);
+require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => moment(date).tz(process.env.TZ).format());
 
 /**
  * 1.) Create indexing function for cases table using this strategy: http://stackoverflow.com/a/18405706
