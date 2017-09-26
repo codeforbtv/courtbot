@@ -11,15 +11,41 @@ const dates = require("../utils/dates"),
     TEST_HOURS = [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,23.75,24,24.15,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49],
     TEST_UTC_DATE = "2015-03-27T08:00:00" + dates.timezoneOffset("2015-03-27");
 
-describe("for a given date", function() {
+describe("With local dates without timezone", function() {
+
+    beforeEach(function() {
+        return manager.ensureTablesExist()
+        .then(() => knex("cases").del())
+
+    });
+    it("Database can read csv date format and gets correct time without timezone", function(){
+        const test_date = moment('2014-09-08T10:00:00-08:00')
+        const date_string = "09/08/2014 10:00AM"
+        return knex("cases").insert([turnerData("", date_string)])
+        .then(() => knex.select("*").from("cases"))
+        .then(row => expect(moment(row[0].date).toISOString()).to.equal(test_date.toISOString()))
+    })
+    it("Database assumes correct time zone when none is given during DST", function(){
+        const test_date = moment('2014-11-08T10:00:00-09:00')
+        const date_string = "11/08/2014 10:00AM"
+        return knex("cases").insert([turnerData("", date_string)])
+        .then(() => knex.select("*").from("cases"))
+        .then(row => {
+            expect(moment(row[0].date).toISOString()).to.equal(test_date.toISOString())
+        })
+    })
+
+})
+
+describe("For a given date", function() {
     const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
 
     beforeEach(function() {
         return manager.ensureTablesExist()
-        .then(clearTable("cases"))
-        .then(clearTable("reminders"))
-        .then(loadCases([turnerData()]))
-        .then(addTestReminder)
+        .then(() => knex("cases").del())
+        .then(() => knex("reminders").del())
+        .then(() => knex("cases").insert([turnerData()]))
+        .then(() => addTestReminder())
     });
 
     it("datetime in table matches datetime on the client", function() {
@@ -69,12 +95,6 @@ function updateCaseDate(caseId, newDate) {
     });
 }
 
-function loadCases(cases) {
-    return function() {
-        //console.log("Adding test case.");
-        return knex("cases").insert(cases);
-    };
-};
 
 function addTestReminder() {
     //console.log("Adding Test Reminder");
@@ -85,17 +105,11 @@ function addTestReminder() {
     });
 };
 
-function clearTable(table) {
-    return function() {
-        //console.log("Clearing table: " + table);
-         return  knex(table).del()
-    };
-};
 
-function turnerData(v) {
+function turnerData(v, d) {
     return {
         //date: '27-MAR-15',
-        date: TEST_UTC_DATE,
+        date: d || TEST_UTC_DATE,
         defendant: 'TURNER, FREDERICK T',
         room: 'CNVCRT',
         time: '01:00:00 PM',

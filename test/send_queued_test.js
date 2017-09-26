@@ -37,10 +37,10 @@ describe("with 2 valid queued cases (same citation)", function() {
         .then(rows => {
             expect(rows[0].sent).to.equal(true);
             expect(rows[0].asked_reminder).to.equal(true);
-            expect(rows[0].asked_reminder_at).to.notNull;
+            expect(rows[0].asked_reminder_at).to.not.be.null;
             expect(rows[1].sent).to.equal(true);
             expect(rows[1].asked_reminder).to.equal(true);
-            expect(rows[1].asked_reminder_at).to.notNull;
+            expect(rows[1].asked_reminder_at).to.not.be.null;
             sinon.assert.calledTwice(messageStub)
             sinon.assert.alwaysCalledWithExactly(messageStub, number, process.env.TWILIO_PHONE_NUMBER, message)
         });
