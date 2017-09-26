@@ -9,10 +9,9 @@ const manager = require("../utils/db/manager");
 const db = require('../db');
 const knex = manager.knex;
 const messages = require('../utils/messages')
-
-const dates = require("../utils/dates"),
-    TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
-    TEST_UTC_DATE = "2015-03-27T08:00:00" + dates.timezoneOffset("2015-03-27");
+const moment = require('moment-timezone')
+const TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
+      TEST_UTC_DATE = moment("2015-03-27T08:00:00").tz(process.env.TZ).format();
 
 describe("with one reminder that hasn't been sent", function() {
     let messageStub
@@ -34,7 +33,7 @@ describe("with one reminder that hasn't been sent", function() {
 
     it("sends the correct info to Twilio and updates the reminder to sent", function() {
         var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
-        return knex("cases").update({date: dates.todayAtHour(14).add(1, 'days'), time: '02:00:00 PM', room: 'NEWROOM' })
+        return knex("cases").update({date: moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), time: '02:00:00 PM', room: 'NEWROOM' })
         .then(() => sendReminders())
         .then(() => knex("reminders").where({ sent: true }).select("*"))
         .then(function (rows) {
@@ -68,7 +67,7 @@ describe("with three reminders (including one duplicate) that haven't been sent"
         messageMock.expects('send').resolves(true).once().withExactArgs(reminder1.phone, process.env.TWILIO_PHONE_NUMBER, message)
         messageMock.expects('send').resolves(true).twice().withExactArgs(reminder2.phone, process.env.TWILIO_PHONE_NUMBER, message)
 
-        return knex("cases").update({ date: dates.todayAtHour(14).add(1, 'days'), time: '02:00:00 PM', room: 'NEWROOM' })
+        return knex("cases").update({ date:  moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), time: '02:00:00 PM', room: 'NEWROOM' })
         .then(() =>  sendReminders())
         .then(res =>  knex("reminders").where({ sent: true }).select("*"))
         .then(rows => {

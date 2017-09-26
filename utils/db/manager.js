@@ -1,7 +1,6 @@
 /* eslint no-console: "off" */
 
 require('dotenv').config();
-const dates = require('../dates');
 const db_connections = require('./db_connections'); /* eslint camelcase: "off" */
 const knex = require('knex')(db_connections[process.env.NODE_ENV || 'development']);
 const moment = require('moment-timezone')

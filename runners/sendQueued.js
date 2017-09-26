@@ -7,11 +7,11 @@ const rollbar = require('rollbar');
 rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
 
 runnerScript()
-  .then((success) => {
+.then((success) => {
     console.log(success);
     process.exit(0);
-  })
-  .catch((err) => {
+})
+.catch((err) => {
     console.log(err);
     // Using callback for process.exit() so the process does not exit before rollbar
     //    is finished sending error.
@@ -20,4 +20,4 @@ runnerScript()
     rollbar.handleError(err, null, () => {
       process.exit(1);
     });
-  });
+});

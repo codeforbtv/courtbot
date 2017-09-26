@@ -3,7 +3,7 @@ require('dotenv').config();
 const sendQueued = require("../sendQueued.js").sendQueued;
 const expect = require("chai").expect;
 const assert = require("chai").assert;
-const now = require("../utils/dates").now;
+const moment = require("moment-timezone")
 const manager = require("../utils/db/manager");
 const db = require('../db');
 const knex = manager.knex;
@@ -72,7 +72,7 @@ describe("with a queued non-existent case", function() {
     it("sends a failure sms after QUEUE_TTL days", function() {
         const number = "+12223334444";
         const message = `We haven't been able to find your court case. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}`;
-        const mockCreatedDate = now().subtract(parseInt(process.env.QUEUE_TTL_DAYS) + 2, 'days');
+        const mockCreatedDate = moment().tz(process.env.TZ).subtract(parseInt(process.env.QUEUE_TTL_DAYS, 10) + 2, 'days');
 
         return knex("queued").update({created_at: mockCreatedDate})
         .then(() => sendQueued())

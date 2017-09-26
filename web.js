@@ -2,8 +2,8 @@
 require('dotenv').config();
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const express = require('express');
-var cookieSession = require('cookie-session')
-var bodyParser = require('body-parser')
+const cookieSession = require('cookie-session')
+const bodyParser = require('body-parser')
 const logfmt = require('logfmt');
 const db = require('./db');
 const rollbar = require('rollbar');
@@ -21,6 +21,9 @@ app.use(cookieSession({
     name: 'session',
     secret: process.env.COOKIE_SECRET
 }));
+
+/* makes json print nicer for /cases */
+app.set('json spaces', 2);
 
 /* Serve testing page on which you can impersonate Twilio
    (but not in production) */
@@ -58,7 +61,7 @@ app.get('/cases', (req, res, next) => {
             d.readableDate = moment(d.date).format('dddd, MMM Do'); /* eslint "no-param-reassign": "off" */
         });
       }
-      return res.send(data);
+      return res.json(data);
     })
     .catch(err => next(err));
 });

@@ -1,9 +1,6 @@
 require('dotenv').config();
-
 const crypto = require('crypto');
 const manager = require('./utils/db/manager');
-const now = require('./utils/dates').now;
-
 const knex = manager.knex;
 
 function escapeSQL(val) {

@@ -1,26 +1,19 @@
 'use strict';
 // setup ENV dependencies
 require('dotenv').config();
-
 const fs = require('fs');
 const expect = require('chai').expect;
 const cookieParser = require('cookie-parser');
-const crypto = require('crypto');
 const Keygrip = require('keygrip');
+const db = require('../db.js');
+const manager = require('../utils/db/manager');
+const moment = require('moment-timezone');
+const knex = manager.knex;
 const app = require('../web');
 const session = require('supertest-session');
 
-const db = require('../db.js');
-const manager = require('../utils/db/manager');
-const dates = require('../utils/dates');
-const moment = require('moment-timezone');
-
-const knex = manager.knex;
-
-const TEST_UTC_DATE = "2015-03-27T13:00:00" + dates.timezoneOffset("2015-03-27");
+const TEST_UTC_DATE = moment("2015-03-27T13:00:00").tz(process.env.TZ).format();
 const keys = Keygrip([process.env.COOKIE_SECRET])
-
-let sess;
 
 /**
  * Altered this to do a local read of the expected content to get expected content length because
@@ -31,6 +24,7 @@ let sess;
  * to be served, rather than "hello I am courtbot..."
  */
 describe("GET /", function() {
+    let sess;
     beforeEach(function() {
         sess = session(app);
     })
@@ -51,6 +45,7 @@ describe("GET /", function() {
 });
 
 describe("GET /cases", function() {
+    let sess;
     beforeEach(function() {
         sess = session(app);
     })
@@ -130,6 +125,7 @@ describe("GET /cases", function() {
 });
 
 describe("POST /sms", function() {
+    let sess;
     const  new_date = moment().add(5, 'days');
 
     beforeEach(function() {
@@ -210,9 +206,9 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     if (err)  return done(err);
-                    expect(getConnectCookie().askedQueued).to.equal(false);
-                    expect(getConnectCookie().askedReminder).to.equal(true);
-                    expect(getConnectCookie().match).to.deep.equal(rawTurnerDataAsObject("", new_date.toISOString()));
+                    expect(getConnectCookie(sess).askedQueued).to.equal(false);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(true);
+                    expect(getConnectCookie(sess).match).to.deep.equal(rawTurnerDataAsObject("", new_date.toISOString()));
                     done();
                 });
             });
@@ -240,9 +236,9 @@ describe("POST /sms", function() {
                     .expect(200)
                     .end(function(err, res) {
                         if (err) return done(err);
-                        expect(getConnectCookie().askedQueued).to.equal(true);
-                        expect(getConnectCookie().askedReminder).to.equal(false);
-                        expect(getConnectCookie().citationId).to.equal("123456");
+                        expect(getConnectCookie(sess).askedQueued).to.equal(true);
+                        expect(getConnectCookie(sess).askedReminder).to.equal(false);
+                        expect(getConnectCookie(sess).citationId).to.equal("123456");
                         done();
                     });
                 });
@@ -258,9 +254,9 @@ describe("POST /sms", function() {
                     .end(function(err, res) {
                         if (err) return done(err);
                         expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Couldn\'t find your case. Case identifier should be 6 to 25 numbers and/or letters in length.</Message></Response>');
-                        expect(getConnectCookie().askedQueued).to.equal(undefined);
-                        expect(getConnectCookie().askedReminder).to.equal(undefined);
-                        expect(getConnectCookie().citationId).to.equal(undefined);
+                        expect(getConnectCookie(sess).askedQueued).to.equal(undefined);
+                        expect(getConnectCookie(sess).askedReminder).to.equal(undefined);
+                        expect(getConnectCookie(sess).citationId).to.equal(undefined);
                         done();
                     });
                  });
@@ -280,9 +276,9 @@ describe("POST /sms", function() {
                     .end(function (err, res) {
                         if (err) return done(err);
                         expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
-                        expect(getConnectCookie().askedQueued).to.equal(false);
-                        expect(getConnectCookie().askedReminder).to.equal(true);
-                        expect(getConnectCookie().citationId).to.equal(undefined);
+                        expect(getConnectCookie(sess).askedQueued).to.equal(false);
+                        expect(getConnectCookie(sess).askedReminder).to.equal(true);
+                        expect(getConnectCookie(sess).citationId).to.equal(undefined);
                         done();
                     });
                 });
@@ -298,9 +294,9 @@ describe("POST /sms", function() {
                     .end(function (err, res) {
                         if (err) return done(err);
                         expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
-                        expect(getConnectCookie().askedQueued).to.equal(false);
-                        expect(getConnectCookie().askedReminder).to.equal(true);
-                        expect(getConnectCookie().citationId).to.equal(undefined);
+                        expect(getConnectCookie(sess).askedQueued).to.equal(false);
+                        expect(getConnectCookie(sess).askedReminder).to.equal(true);
+                        expect(getConnectCookie(sess).citationId).to.equal(undefined);
                         done();
                     });
                 });
@@ -316,9 +312,9 @@ describe("POST /sms", function() {
                     .end(function (err, res) {
                         if (err) return done(err);
                         expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>We found a case for Frederick Turner scheduled today at ${caseDate.format('h:mm A')}, at CNVCRT. Would you like a courtesy reminder the day before a future hearing? (reply YES or NO)</Message></Response>`);
-                        expect(getConnectCookie().askedQueued).to.equal(false);
-                        expect(getConnectCookie().askedReminder).to.equal(true);
-                        expect(getConnectCookie().citationId).to.equal(undefined);
+                        expect(getConnectCookie(sess).askedQueued).to.equal(false);
+                        expect(getConnectCookie(sess).askedReminder).to.equal(true);
+                        expect(getConnectCookie(sess).citationId).to.equal(undefined);
                         done();
                     });
                 });
@@ -343,7 +339,7 @@ describe("POST /sms", function() {
                     if (err)  return done(err);
 
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
-                    expect(getConnectCookie().askedReminder).to.equal(false);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(false);
 
                     knex("reminders").select("*").groupBy("reminders.reminder_id").count('* as count')
                     .then((rows) => {
@@ -365,7 +361,7 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err) return done(err);
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
-                    expect(getConnectCookie().askedReminder).to.equal(false);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(false);
                     knex("reminders").count('* as count')
                     .then((rows) => {
                         expect(rows[0].count).to.equal('0');
@@ -406,7 +402,7 @@ describe("POST /sms", function() {
                     if (err) return done(err);
                     const data = rawTurnerDataAsObject("", new_date)
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
-                    expect(getConnectCookie().askedReminder).to.equal(false);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(false);
                     knex("reminders").select("*").groupBy("reminders.reminder_id").count('* as count')
                     .then(rows =>  {
                         const record = rows[0];
@@ -429,7 +425,7 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err) return done(err);
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
-                    expect(getConnectCookie().askedReminder).to.equal(false);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(false);
                     knex("reminders").count('* as count')
                     .then(rows => {
                         expect(rows[0].count).to.equal('0')
@@ -468,9 +464,9 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err) return done(err);
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Couldn\'t find your case. Case identifier should be 6 to 25 numbers and/or letters in length.</Message></Response>');
-                    expect(getConnectCookie().askedQueued).to.equal(undefined);
-                    expect(getConnectCookie().askedReminder).to.equal(undefined);
-                    expect(getConnectCookie().citationId).to.equal(undefined);
+                    expect(getConnectCookie(sess).askedQueued).to.equal(undefined);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(undefined);
+                    expect(getConnectCookie(sess).citationId).to.equal(undefined);
                     done();
                 });
             });
@@ -482,9 +478,9 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err) return done(err);
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Couldn\'t find your case. Case identifier should be 6 to 25 numbers and/or letters in length.</Message></Response>');
-                    expect(getConnectCookie().askedQueued).to.equal(undefined);
-                    expect(getConnectCookie().askedReminder).to.equal(undefined);
-                    expect(getConnectCookie().citationId).to.equal(undefined);
+                    expect(getConnectCookie(sess).askedQueued).to.equal(undefined);
+                    expect(getConnectCookie(sess).askedReminder).to.equal(undefined);
+                    expect(getConnectCookie(sess).citationId).to.equal(undefined);
                     done();
                 });
             });
@@ -526,7 +522,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. We will keep checking for up to ' + process.env.QUEUE_TTL_DAYS + ' days. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
-                    expect(getConnectCookie().askedQueued).to.equal(false);
+                    expect(getConnectCookie(sess).askedQueued).to.equal(false);
                     done();
                 });
             });
@@ -558,7 +554,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function(err, res) {
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
-                    expect(getConnectCookie().askedQueued).to.equal(false);
+                    expect(getConnectCookie(sess).askedQueued).to.equal(false);
                     done();
                 });
             });
@@ -594,7 +590,7 @@ function rawTurnerDataAsObject(v,d) {
     data.has_past = moment(d).isBefore(moment())
     return data;
 }
-function getConnectCookie() {
+function getConnectCookie(sess) {
     if (!sess.cookies) return {}
     const sessionCookie =  sess.cookies.find(cookie => cookie.name === 'session');
     const cookie = sessionCookie && JSON.parse(Buffer.from(sessionCookie['value'], 'base64'));

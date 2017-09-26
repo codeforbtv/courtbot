@@ -5,11 +5,10 @@ const expect = require("chai").expect;
 const manager = require("../utils/db/manager");
 const db = require('../db');
 const knex = manager.knex;
-var moment = require("moment-timezone");
-const dates = require("../utils/dates"),
-    TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
-    TEST_HOURS = [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,23.75,24,24.15,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49],
-    TEST_UTC_DATE = "2015-03-27T08:00:00" + dates.timezoneOffset("2015-03-27");
+const moment = require("moment-timezone");
+const TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
+      TEST_HOURS = [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,23.75,24,24.15,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49],
+      TEST_UTC_DATE = moment("2015-03-27T08:00:00").tz('America/Anchorage').format();
 
 describe("With local dates without timezone", function() {
     beforeEach(function() {
@@ -18,14 +17,14 @@ describe("With local dates without timezone", function() {
     });
 
     it("Database can read csv date format and gets correct time without timezone", function(){
-        const test_date = moment('2014-09-08T10:00:00-08:00')
+        const test_date = moment('2014-09-08T10:00:00').tz(process.env.TZ)
         const date_string = "09/08/2014 10:00AM"
         return knex("cases").insert([turnerData("", date_string)])
         .then(() => knex.select("*").from("cases"))
         .then(row => expect(moment(row[0].date).toISOString()).to.equal(test_date.toISOString()))
     })
     it("Database assumes correct time zone when none is given during DST", function(){
-        const test_date = moment('2014-11-08T10:00:00-09:00')
+        const test_date = moment('2014-11-08T10:00:00').tz(process.env.TZ)
         const date_string = "11/08/2014 10:00AM"
         return knex("cases").insert([turnerData("", date_string)])
         .then(() => knex.select("*").from("cases"))
@@ -36,8 +35,6 @@ describe("With local dates without timezone", function() {
 })
 
 describe("For a given date", function() {
-    const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
-
     beforeEach(function() {
         return manager.ensureTablesExist()
         .then(() => knex("cases").del())
@@ -61,12 +58,11 @@ describe("For a given date", function() {
             return updateCaseDate(TEST_CASE_ID, testDateTime)
             .then(findReminders)
             .then(function(results) {
-                if (results[0]) console.log(dates.fromUtc(results[0].date).format(), testDateTime.format());
+                if (results[0]) console.log(moment(results[0].date).format(), testDateTime.format());
                 if ((hr >= 0) && (hr < 24)) {  // Should only find reminders for the next day
                     console.log("Reminder found for hour ", hr)
                     expect(results.length).to.equal(1);
-                    expect(dates.fromUtc(results[0].date).format()).to.equal(testDateTime.format());
-                    expect(results[0].time).to.equal(dates.toFormattedTime(testDateTime));
+                    expect(moment(results[0].date).format()).to.equal(testDateTime.format());
                 } else {
                     console.log("NO reminder found for hour ", hr)
                     expect(results.length).to.equal(0);
@@ -84,7 +80,6 @@ function updateCaseDate(caseId, newDate) {
     return  knex("cases").where("id", "=", caseId)
     .update({
         "date": newDate.format(),
-        "time": dates.toFormattedTime(newDate)
     })
     .then(() => knex('cases').where("id", "=", caseId).select())
     .then(function(results) {
