@@ -6,10 +6,9 @@ const fs = require('fs');
 const expect = require('chai').expect;
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
-const Keygrip = require('keygrip')
-const Session = require('supertest-session')({
-  app: require('../web')
-});
+const Keygrip = require('keygrip');
+const app = require('../web');
+const session = require('supertest-session');
 
 const db = require('../db.js');
 const manager = require('../utils/db/manager');
@@ -33,7 +32,7 @@ let sess;
  */
 describe("GET /", function() {
     beforeEach(function() {
-        sess = new Session();
+        sess = session(app);
     })
     afterEach(function(){
         sess.destroy();
@@ -41,7 +40,7 @@ describe("GET /", function() {
     it("responds with web form test input", function(done) {
         var expectedContent = fs.readFileSync("public/index.html", "utf8");
         sess.get('/')
-        .expect('Content-Length', expectedContent.length)
+        .expect('Content-Length', expectedContent.length.toString())
         .expect(200)
         .end(function(err, res) {
             if (err) return done(err);
@@ -53,7 +52,7 @@ describe("GET /", function() {
 
 describe("GET /cases", function() {
     beforeEach(function() {
-        sess = new Session();
+        sess = session(app);
     })
     afterEach(function(){
         sess.destroy();
@@ -134,7 +133,7 @@ describe("POST /sms", function() {
     const  new_date = moment().add(5, 'days');
 
     beforeEach(function() {
-        sess = new Session();
+        sess = session(app);
         return knex('cases').del()
         .then(() => knex('reminders').del())
         .then(() => knex('queued').del())
@@ -597,9 +596,9 @@ function rawTurnerDataAsObject(v,d) {
 }
 function getConnectCookie() {
     if (!sess.cookies) return {}
-    const sessionCookie =  sess.cookies.find(cookie => cookie.hasOwnProperty('session'));
-    const cookie = JSON.parse(Buffer.from(sessionCookie['session'], 'base64'));
-    return cookie
+    const sessionCookie =  sess.cookies.find(cookie => cookie.name === 'session');
+    const cookie = sessionCookie && JSON.parse(Buffer.from(sessionCookie['value'], 'base64'));
+    return cookie || {}
   }
 
 function sortObject(o) {
