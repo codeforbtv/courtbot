@@ -12,12 +12,11 @@ const dates = require("../utils/dates"),
     TEST_UTC_DATE = "2015-03-27T08:00:00" + dates.timezoneOffset("2015-03-27");
 
 describe("With local dates without timezone", function() {
-
     beforeEach(function() {
         return manager.ensureTablesExist()
         .then(() => knex("cases").del())
-
     });
+
     it("Database can read csv date format and gets correct time without timezone", function(){
         const test_date = moment('2014-09-08T10:00:00-08:00')
         const date_string = "09/08/2014 10:00AM"
