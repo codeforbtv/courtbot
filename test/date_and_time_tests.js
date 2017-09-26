@@ -34,7 +34,6 @@ describe("With local dates without timezone", function() {
             expect(moment(row[0].date).toISOString()).to.equal(test_date.toISOString())
         })
     })
-
 })
 
 describe("For a given date", function() {

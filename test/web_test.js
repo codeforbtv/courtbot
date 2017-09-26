@@ -7,7 +7,6 @@ const expect = require('chai').expect;
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const Keygrip = require('keygrip')
-const tk = require('timekeeper');
 const Session = require('supertest-session')({
   app: require('../web')
 });
@@ -136,9 +135,6 @@ describe("POST /sms", function() {
 
     beforeEach(function() {
         sess = new Session();
-        //const time = new Date("2015-03-02T12:00:00" + dates.timezoneOffset("2015-03-02")); // Freeze
-        //tk.freeze(time);
-       // const  new_date = moment().add(5, 'days').toISOString();
         return knex('cases').del()
         .then(() => knex('reminders').del())
         .then(() => knex('queued').del())
@@ -146,7 +142,6 @@ describe("POST /sms", function() {
     })
     afterEach(function () {
         sess.destroy();
-        //tk.reset();
       });
     context("without session set", function() {
         context("with 1 matching court case", function() {

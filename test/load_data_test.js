@@ -11,7 +11,6 @@ require('dotenv').config();
 const expect = require('chai').expect;
 const assert = require('chai').assert;
 const nock = require('nock');
-const tk = require('timekeeper');
 const fs = require('fs');
 const url = require('url');
 const manager = require('../utils/db/manager');
@@ -34,15 +33,6 @@ dataUrls.forEach((dataUrl) => {
 });
 
 describe('Loading of Data', function () {
-  beforeEach(() => {
-    const time = new Date('2016-03-01T12:00:00'); // Freeze
-    tk.freeze(time);
-  });
-
-  afterEach(function () {
-    tk.reset();
-  });
-
   describe('With a 404 on the CSV', function () {
     dataUrls.forEach((dataUrl) => {
       nock(dataHostname(dataUrl))
