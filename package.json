@@ -6,7 +6,7 @@
   "scripts": {
     "test": "NODE_ENV=test mocha test",
     "start": "node web.js",
-    "dbsetup": "node utils/createQueuedTable; node utils/createRemindersTable",
+    "dbsetup": "node utils/createNotificationsTable; node utils/createRequestsTable",
     "loaddata": "node runners/load.js"
   },
   "author": "Sam Hashemi",
