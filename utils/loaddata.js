@@ -2,7 +2,6 @@
 
 // Downloads the latest courtdate CSV file and
 // rebuilds the database. For best results, load nightly.
-require('dotenv').config();
 const request = require('request');
 const parse = require('csv-parse');
 const sha1 = require('sha1');

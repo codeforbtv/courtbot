@@ -170,5 +170,4 @@ module.exports = {
     reminder,
     send,
     unableToFindCitationForTooLong,
-    cleanupName,
 };
