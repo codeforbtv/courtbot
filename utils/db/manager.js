@@ -25,7 +25,7 @@ const createTableInstructions = {
             table.string('defendant', 100);
             table.timestamp('date');
             table.string('room', 100);
-            table.string('citation_id', 100);
+            table.string('id', 100);
             table.primary(['id', 'date'])
             table.index('id')
         })
@@ -65,6 +65,18 @@ function batchInsert(table, rows, size) {
     .catch(trx.rollback));
 }
 
+function acquireSingleConnection(){
+    return new Promise((resolve, reject) => {
+        knex.client.pool.acquire((err, client) => {
+            if (err) return reject(err)
+            resolve(client)
+        })
+    })
+}
+
+function returnConnection(client){
+    knex.client.pool.release(client)
+}
 /**
  * Manually close database connection.
  *
@@ -131,4 +143,6 @@ module.exports = {
   dropTable,
   batchInsert,
   knex,
+  acquireSingleConnection,
+  returnConnection
 };
