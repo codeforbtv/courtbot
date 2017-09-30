@@ -12,7 +12,7 @@ runnerScript()
     process.exit(0);
 })
 .catch((err) => {
-    console.log('Error: ', err);
+    console.log('In catch Error: ', err);
     // Using callback for process.exit() so the process does not exit before rollbar
     //    is finished sending error.
     //    Sending null as second arg since there is no

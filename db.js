@@ -36,8 +36,7 @@ function decryptPhone(phone) {
 }
 
 function findCitation(citation) {
-    const cleanedCitation = escapeSQL(citation.toUpperCase().trim());
-    return knex('cases').where('citations', '@>', `[{"id": "${cleanedCitation}"}]`)
+    return knex('cases').where('id', citation )
     .select('*', knex.raw(`
         CURRENT_DATE = date_trunc('day', date) as today,
         date < CURRENT_TIMESTAMP as has_past
@@ -70,8 +69,7 @@ function fuzzySearch(str) {
     if (parts.length > 1) query = query.andWhere('defendant', 'ilike', `%${parts[1]}%`);
 
     // Search for Citations
-    const cleanedCitation = escapeSQL(parts[0]);
-    query = query.orWhere('citations', '@>', `[{"id": "${cleanedCitation}"}]`);
+    query = query.orWhere('id',parts[0]);
 
     // Limit to ten results
     query = query.limit(10);
@@ -79,22 +77,31 @@ function fuzzySearch(str) {
 }
 
 function addReminder(data) {
-    return knex('reminders').insert({
-        case_id: data.caseId,
-        sent: false,
-        phone: encryptPhone(data.phone),
-        created_at: knex.raw('CURRENT_TIMESTAMP'),
-        original_case: data.originalCase,
-    });
+    return knex.raw(`
+        INSERT INTO requests
+        (case_id, phone, known_case)
+        VALUES(:case_id ,:phone, true)
+        ON CONFLICT (case_id, phone) DO UPDATE SET created_at = NOW()`,
+        {
+            case_id: data.case_id,
+            phone: encryptPhone(data.phone)
+        }
+    )
 }
 
 function addQueued(data) {
-    return knex('queued').insert({
-        citation_id: data.citationId,
-        sent: false,
-        phone: encryptPhone(data.phone),
-        created_at: knex.raw('CURRENT_TIMESTAMP'),
-    });
+    // currently if someone tries to add a queued request that already exists
+    // for that phone and id, it simply renews it.
+    return knex.raw(`
+        INSERT INTO requests
+        (case_id, phone, known_case)
+        VALUES(:case_id ,:phone, false)
+        ON CONFLICT (case_id, phone) DO UPDATE SET created_at = NOW()`,
+        {
+            case_id: data.case_id,
+            phone: encryptPhone(data.phone)
+         }
+    )
 }
 
 module.exports = {

@@ -32,9 +32,10 @@ const createTableInstructions = {
     },
     requests() {
         return knex.schema.createTableIfNotExists('requests', (table) => {
-            table.timestamps(true, true)
+            table.timestamp('created_at').defaultTo(knex.fn.now());
             table.string('case_id', 100);
             table.string('phone', 100);
+            table.boolean('known_case')
             table.primary(['case_id', 'phone'])
         });
     },

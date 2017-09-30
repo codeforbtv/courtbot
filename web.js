@@ -107,6 +107,7 @@ function askedReminderMiddleware(req, res, next) {
             next();
             return;
         }
+        /*
         db.findAskedQueued(req.body.From)
         .then((data) => {
             if (data.length === 1) { // Only respond if we found one queue response "session"
@@ -116,6 +117,8 @@ function askedReminderMiddleware(req, res, next) {
             next();
         })
         .catch(err => next(err));
+        */
+        next()
     } else {
         next();
     }
@@ -128,9 +131,8 @@ app.post('/sms', askedReminderMiddleware, (req, res, next) => {
     if (req.askedReminder) {
         if (isResponseYes(text)) {
             db.addReminder({
-                caseId: req.match.id,
+                case_id: req.match.id,
                 phone: req.body.From,
-                originalCase: JSON.stringify(req.match),
             })
             .then(() => {
                 twiml.message(messages.weWillRemindYou());
@@ -149,7 +151,7 @@ app.post('/sms', askedReminderMiddleware, (req, res, next) => {
     if (req.session.askedQueued) {
         if (isResponseYes(text)) {
             db.addQueued({
-                citationId: req.session.citationId,
+                case_id: req.session.citationId,
                 phone: req.body.From,
             })
             .then(() => {
