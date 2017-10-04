@@ -3,86 +3,78 @@
 const db = require('./db.js');
 const messages = require('./utils/messages');
 const manager = require('./utils/db/manager');
-const moment = require("moment-timezone");
 
 const knex = manager.knex;
 
 /**
- * Retrieve array of queued messages that have not been sent, if any exist.
+ * Retrieve array of requests that have sat too long.
  *
- * @return {Promise} Promise to return an array of queued messages that have not been sent
+ * @return {Promise} Promise that resolves to an array of objects:
+ * [{phone: 'encrypted-phone', case_id: [id1, id2, ...]}, ...]
  */
-function findQueued() {
-    return knex('queued')
-    .where('sent', false)
-    .select('*', knex.raw(`created_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day' as has_sat_too_long`));
+function getExpiredRequests() {
+    // We dont delete these all at once even though that's easier, becuase we don't want to
+    // delete if there's a tillio(or other) error
+
+    return knex('requests')
+    .where('known_case', false)
+    .and.whereRaw(`updated_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day'`)
+    .select('phone', knex.raw( `array_agg(case_id) as case_ids`))
+    .groupBy('phone')
 }
 
 /**
- * Find a citation that is related to a queued message.
+ * Deletes given case_ids and send unable-to-find message
  *
- * @param  {Object}  queuedMessage for which we want to lookup citation data.
- * @return {Promise} promise to retrieve citation data.
+ * @param {*} groupedRequest is an object with a phone and an array of case_ids.
  */
-function retrieveCitation(queuedMessage) {
-    return db.findCitation(queuedMessage.citation_id)
-    .then(results => ({
-        queuedMessage,
-        citationFound: results.length > 0,
-        relatedCitation: (results.length ? results[0] : false),
-    }));
+function deleteAndNotify(groupedRequest) {
+    const phone = db.decryptPhone(groupedRequest.phone);
+    return knex.transaction(trx => {
+        return trx('requests')
+        .where('phone', groupedRequest.phone)
+        .and.whereIn('case_id', groupedRequest.case_ids )
+        .del()
+        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(groupedRequest.case_ids)))
+    })
+    .catch(err => {
+        // catch here to allow Promise.all() to send remaining
+        console.log("Error sending delete notification", err) // better logging coming
+        return ("Delete and Notify error")
+    })
 }
 
 /**
- * Update queued message in db to indicate it has been sent, and that a reminder will be sent.
+ * Finds requests that have matched a real citation for the first time
  *
- * @param  {string} queuedId index by which to lookup queued message for update.
- * @return {Promise} function to recieve results and Promise to perform update.
+ * @return {Promise} that resolves to case and request information
  */
-function updateSentWithReminder(queuedId) {
-    return knex('queued')
-    .where('queued_id', '=', queuedId)
-    .update({
-        sent: true,
-        asked_reminder: true,
-        asked_reminder_at: knex.raw('now()'),
-    });
+function discoverNewCitations() {
+    return knex.select('*', knex.raw(`CURRENT_DATE = date_trunc('day', date) as today`)).from('requests')
+    .innerJoin('cases', {'requests.case_id': 'cases.case_id'})
+    .where('requests.known_case', false)
 }
 
 /**
- * Update data for queued message to indicate it has been sent but no reminder is required.
+ * Inform subscriber that we found this case and will send reminders before future hearings
  *
- * @param  {string} queuedId index to be used for lookup of queued message when updating.
- * @return {function} function to recieve results and Promise to perform update.
+ * @param {*} request_case object from join of request and case table
  */
-function updateSentWithoutReminder(queuedId) {
-    return knex('queued')
-    .where('queued_id', '=', queuedId)
-    .update({ sent: true });
-}
-
-/**
- * Process citation:
- *   1.)  Citation data found:  send message to defendant asking if they want a reminder
- *   2.)  Citation data not found and message has been queued too long:
- *        send a "not found" message to defendant.
- *   3.)  N/A do nothing and leave queued.
- *
- * @param  {Object} queued queued message and citation data(if found)
- * @return {Promise} promise to process queued message (if applicable)
- */
-function processCitationMessage(queued) {
-    const phone = db.decryptPhone(queued.queuedMessage.phone);
-    if (queued.citationFound) {
-        const match = queued.relatedCitation
-        match.date = moment(match.date)
-        return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItAskForReminder(true, match))
-        .then(() => updateSentWithReminder(queued.queuedMessage.queued_id));
-    } else if (queued.queuedMessage.has_sat_too_long) {
-        return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong())
-        .then(() => updateSentWithoutReminder(queued.queuedMessage.queued_id));
-    }
-    return false;
+function updateAndNotify(request_case) {
+    console.log("case: ", request_case)
+    const phone = db.decryptPhone(request_case.phone);
+    return knex.transaction(trx => {
+        return  trx('requests')
+        .where('phone', request_case.phone)
+        .andWhere('case_id', request_case.case_id )
+        .update('known_case', true)
+        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
+    })
+    .catch(err => {
+        // catch here to allow Promise.all() to send remaining
+        console.log("Error sending update notification", err) // better logging coming
+        return ("Update error")
+    })
 }
 
 /**
@@ -90,13 +82,19 @@ function processCitationMessage(queued) {
  *
  * @return {Promise} Promise to process all queued messages.
  */
+
 function sendQueued() {
-    return findQueued()
-    .then(resultsArray => Promise.all(resultsArray.map(r => retrieveCitation(r))))
-    .then(resultsArray => Promise.all(resultsArray.map(r => processCitationMessage(r))));
+    return discoverNewCitations()
+    .then(resultsArray => Promise.all(resultsArray.map(r => updateAndNotify(r))))
+
+    /*
+    return getExpiredRequests()
+    .then(resultsArray => Promise.all(resultsArray.map(r => deleteAndNotify(r))))
+    */
+    //.then(resultsArray => Promise.all(resultsArray.map(r => processCitationMessage(r))));
 }
 
 module.exports = {
     sendQueued,
-    retrieveCitation
+    discoverNewCitations,
 };

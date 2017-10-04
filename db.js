@@ -36,7 +36,7 @@ function decryptPhone(phone) {
 }
 
 function findCitation(citation) {
-    return knex('cases').where('id', citation )
+    return knex('cases').where('case_id', citation )
     .select('*', knex.raw(`
         CURRENT_DATE = date_trunc('day', date) as today,
         date < CURRENT_TIMESTAMP as has_past
@@ -61,6 +61,19 @@ function findAskedQueued(phone) {
     });
 }
 
+function requestsFor(phone) {
+    return knex('requests')
+    .where('phone', encryptPhone(phone))
+    .select('case_id')
+}
+
+function deleteRequestsFor(phone){
+    return knex('requests')
+    .where('phone', encryptPhone(phone))
+    .del()
+    .returning('case_id')
+}
+
 function fuzzySearch(str) {
     const parts = str.trim().toUpperCase().split(' ');
 
@@ -76,6 +89,9 @@ function fuzzySearch(str) {
     return query;
 }
 
+// If someone tries to add a request that already exists
+// for that phone and id, it simply renews it.
+
 function addReminder(data) {
     return knex.raw(`
         INSERT INTO requests
@@ -90,8 +106,6 @@ function addReminder(data) {
 }
 
 function addQueued(data) {
-    // currently if someone tries to add a queued request that already exists
-    // for that phone and id, it simply renews it.
     return knex.raw(`
         INSERT INTO requests
         (case_id, phone, known_case)
@@ -112,4 +126,6 @@ module.exports = {
     findAskedQueued,
     findCitation,
     fuzzySearch,
+    deleteRequestsFor,
+    requestsFor,
 };

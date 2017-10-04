@@ -99,6 +99,41 @@ function isResponseNo(text) {
     return (text === 'NO' || text === 'N');
 }
 
+/**
+ * Allows user to remove ALL reminders (both matched to a case and not)
+ *
+ */
+function stopMiddleware(req, res, next){
+    const text = cleanupText(req.body.Body.toUpperCase());
+    if (text !== 'STOP') return next()
+
+    const twiml = new MessagingResponse();
+
+    if (!req.session.stopconfirmed ) {
+        db.requestsFor(req.body.From)
+        .then(case_ids => {
+            if (case_ids.length === 0) {
+                twiml.message(messages.youAreNotFollowingAnything())
+            } else {
+                req.session.stopconfirmed = true
+                twiml.message(messages.confirmStop(case_ids))
+            }
+        res.send(twiml.toString());
+        })
+    } else {
+        db.deleteRequestsFor(req.body.From)
+        .then(case_ids => {
+            if (case_ids.length === 0) {
+                twiml.message(messages.youAreNotFollowingAnything())
+            } else {
+                req.session.stopconfirmed = null
+                twiml.message(messages.weWillStopSending(case_ids));
+            }
+        res.send(twiml.toString());
+        })
+    }
+}
+
 function askedReminderMiddleware(req, res, next) {
     if (isResponseYes(req.body.Body) || isResponseNo(req.body.Body)) {
         if (req.session.askedReminder) {
@@ -125,13 +160,16 @@ function askedReminderMiddleware(req, res, next) {
 }
 
 /* Respond to text messages that come in from Twilio */
-app.post('/sms', askedReminderMiddleware, (req, res, next) => {
+app.post('/sms',
+    stopMiddleware,
+    askedReminderMiddleware,
+    (req, res, next) => {
     const twiml = new MessagingResponse();
     const text = cleanupText(req.body.Body.toUpperCase());
     if (req.askedReminder) {
         if (isResponseYes(text)) {
             db.addReminder({
-                case_id: req.match.id,
+                case_id: req.match.case_id,
                 phone: req.body.From,
             })
             .then(() => {

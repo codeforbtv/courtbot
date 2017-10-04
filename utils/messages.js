@@ -45,7 +45,7 @@ function forMoreInfo() {
  * @param  {string} room room of court appearance.
  * @return {String} message.
  */
-function foundItAskForReminder(includeSalutation, match) {
+function foundItWillRemind(includeSalutation, match) {
     const salutation = `Hello from the ${process.env.COURT_NAME}. `;
     const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
         ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
@@ -53,13 +53,13 @@ function foundItAskForReminder(includeSalutation, match) {
 
     let futureHearing = '';
     if (match.has_past) {
-        futureHearing = ' a future hearing';
+        futureHearing = ' future hearings';
     } else if (match.today) { // Hearing today
-        futureHearing = ' a future hearing';
+        futureHearing = ' future hearings';
     }
 
     return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
-        Would you like a courtesy reminder the day before${futureHearing}? (reply YES or NO)`);
+        We will send you a courtesy reminder the day before${futureHearing}`);
 }
 
 /**
@@ -112,15 +112,15 @@ function reminder(occurrence) {
  *
  * @return {string} Not Found Message
  */
-function unableToFindCitationForTooLong() {
-    return normalizeSpaces(`We haven't been able to find your court case.
+function unableToFindCitationForTooLong(case_ids) {
+    return normalizeSpaces(`We haven't been able to find your court case${case_ids.length ? 's': ''}: ${case_ids.join(', ')}.
         You can go to ${process.env.COURT_PUBLIC_URL} for more information.
         - ${process.env.COURT_NAME}`);
 }
 
 /**
  * tell them we will keep looking for the case they inquired about
- *
+ * @param {Array} cases
  * @return {string} message
  */
 function weWillKeepLooking() {
@@ -141,6 +141,40 @@ function weWillRemindYou() {
         to ${process.env.COURT_PUBLIC_URL}.`);
 }
 
+/**
+ * ask for confirmation before stopping reminders
+ * @param {Array} cases
+ * @return {string} message
+ */
+function confirmStop(cases){
+    return normalizeSpaces(`You are currently scheduled to receive reminders for ${cases.length} case${cases.length > 1 ? 's' :''}
+    To stop receiving reminders for these cases send 'STOP' again.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`);
+}
+
+/**
+ * tell them we will stop sending reminders about cases
+ * @param {Array} cases
+ * @return {string} message
+ */
+function weWillStopSending(cases) {
+    return normalizeSpaces(`OK. We will stop sending reminders for the following case number${cases.length > 1 ? 's' :''}:
+    ${cases.join(', ')}. If you want to resume reminders you can text these numbers to us again.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`);
+}
+
+/**
+ * tell them we don't have any requests in the system for them
+ *
+ * @return {String} message.
+ */
+function youAreNotFollowingAnything(){
+    return normalizeSpaces(`You are not currently subscribed for any reminders. If you want to be reminded
+    about an upcoming hearing, send us the case/citation number. You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`)
+}
 
 /**
  * Send a twilio message
@@ -161,7 +195,7 @@ function send(to, from, body) {
 
 module.exports = {
     forMoreInfo,
-    foundItAskForReminder,
+    foundItWillRemind,
     iAmCourtBot,
     invalidCaseNumber,
     notFoundAskToKeepLooking,
@@ -171,4 +205,7 @@ module.exports = {
     send,
     unableToFindCitationForTooLong,
     cleanupName,
+    weWillStopSending,
+    youAreNotFollowingAnything,
+    confirmStop,
 };

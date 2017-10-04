@@ -25,14 +25,15 @@ const createTableInstructions = {
             table.string('defendant', 100);
             table.timestamp('date');
             table.string('room', 100);
-            table.string('id', 100);
-            table.primary(['id', 'date'])
-            table.index('id')
+            table.string('case_id', 100);
+            table.string('type', 100);
+            table.primary(['case_id', 'date']);
+            table.index('case_id');
         })
     },
     requests() {
         return knex.schema.createTableIfNotExists('requests', (table) => {
-            table.timestamp('created_at').defaultTo(knex.fn.now());
+            table.timestamps(true, true);
             table.string('case_id', 100);
             table.string('phone', 100);
             table.boolean('known_case')
@@ -41,9 +42,11 @@ const createTableInstructions = {
     },
     notifications(){
         return knex.schema.createTableIfNotExists('notifications', (table) => {
+            table.timestamp('created_at').defaultTo(knex.fn.now());
             table.string('case_id');
             table.string('phone');
             table.timestamp('event_date');
+            table.primary(['case_id', 'phone', 'event_date'])
             table.foreign(['case_id', 'phone']).onDelete('CASCADE').references(['case_id', 'phone' ]).inTable('requests')
         })
     }

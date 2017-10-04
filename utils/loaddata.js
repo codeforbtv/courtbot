@@ -28,12 +28,13 @@ const csv_headers = {
  */
 
 function loadData(dataUrls) {
+    console.log("here")
     // determine what urls to load and how to extract them
     // example DATA_URL=http://courtrecords.alaska.gov/MAJIC/sandbox/acs_mo_event.csv
     // example DATA_URL=http://courtrecords.../acs_mo_event.csv|civil_cases,http://courtrecords.../acs_cr_event.csv|criminal_cases
 
-    //const files = (dataUrls || process.env.DATA_URL).split(',');
-    const files = ['http://www.photo-mark.com'] // force a parse error
+    const files = (dataUrls || process.env.DATA_URL).split(',');
+    //const files = ['http://www.photo-mark.com'] // force a parse error
 
     // Combine streams into one
     const combinedStream = CombinedStream.create();
@@ -74,7 +75,7 @@ function loadData(dataUrls) {
         await createTempCasesTable(stream_client)
 
         // since we've transformed csv into [date, defendant, room, id] form, we can just pipe it to postgres
-        const copy_stream = stream_client.query(copyFrom('COPY cases_temp ("date", "defendant", "room", "id") FROM STDIN CSV'));
+        const copy_stream = stream_client.query(copyFrom('COPY cases_temp ("date", "defendant", "room", "case_id") FROM STDIN CSV'));
         copy_stream.on('error', reject)
         copy_stream.on('end', async () => {
             // when csv has been consumed by db, copy temp table to real table
@@ -93,8 +94,8 @@ async function copyTemp(client){
     await manager.dropTable('cases')
     await manager.createTable('cases')
     await client.query(`
-        INSERT INTO cases (date, defendant, room, id)
-        SELECT date, defendant, room, id from cases_temp
+        INSERT INTO cases (date, defendant, room, case_id)
+        SELECT date, defendant, room, case_id from cases_temp
         ON CONFLICT DO NOTHING;
     `)
     console.log("table created")
@@ -107,7 +108,7 @@ async function createTempCasesTable(client){
             date timestamptz,
             defendant varchar(100),
             room varchar(100),
-            id varchar(100)
+            case_id varchar(100)
         )
     `)
     return
