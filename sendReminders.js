@@ -11,13 +11,12 @@ const knex = manager.knex;
  * @return {array} Promise to return results
  */
 function findReminders() {
-    // much easier than trying to do this with knex functions.
     return knex.raw(`
         SELECT DISTINCT case_id, phone, defendant, date, room FROM requests
-        INNER JOIN cases USING (case_id)
+        INNER JOIN hearings USING (case_id)
         LEFT OUTER JOIN notifications USING (case_id, phone)
-        WHERE tstzrange(TIMESTAMP 'tomorrow', TIMESTAMP 'tomorrow' + interval '1 day') @> cases.date
-        AND  (notifications.event_date != cases.date OR notifications.event_date IS NULL)
+        WHERE tstzrange(TIMESTAMP 'tomorrow', TIMESTAMP 'tomorrow' + interval '1 day') @> hearings.date
+        AND  (notifications.event_date != hearings.date OR notifications.event_date IS NULL)
     `)
     .then(result => result.rows)
 }

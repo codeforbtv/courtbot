@@ -13,18 +13,23 @@ const knex = manager.knex;
  * [{phone: 'encrypted-phone', case_id: [id1, id2, ...]}, ...]
  */
 function getExpiredRequests() {
-    // We dont delete these all at once even though that's easier, becuase we don't want to
-    // delete if there's a tillio(or other) error
+    /* We dont delete these all at once even though that's easier, becuase we only want to
+       delete if there's not a tillio (or other) error. */
 
     return knex('requests')
     .where('known_case', false)
     .and.whereRaw(`updated_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day'`)
-    .select('phone', knex.raw( `array_agg(case_id) as case_ids`))
+    .whereNotExists(function()  { // should only be neccessary if there's an error in discoverNewCitations
+        this.select('*').from('hearings').whereRaw('hearings.case_id = requests.case_id');
+    })
+    .select('phone', knex.raw( `array_agg(case_id ORDER BY case_id DESC) as case_ids`))
     .groupBy('phone')
 }
 
 /**
- * Deletes given case_ids and send unable-to-find message
+ * Deletes given case_ids and sends unable-to-find message
+ * Perform both actions inside transaction so if we only update DB if twilio suceeds
+ * and don't send to Twilio if delete fails.
  *
  * @param {*} groupedRequest is an object with a phone and an array of case_ids.
  */
@@ -45,56 +50,59 @@ function deleteAndNotify(groupedRequest) {
 }
 
 /**
- * Finds requests that have matched a real citation for the first time
- *
+ * Finds requests that have matched a real citation for the first time.
+ * These are identified with the 'know_case = false' flag
  * @return {Promise} that resolves to case and request information
  */
 function discoverNewCitations() {
-    return knex.select('*', knex.raw(`CURRENT_DATE = date_trunc('day', date) as today`)).from('requests')
-    .innerJoin('cases', {'requests.case_id': 'cases.case_id'})
+    return knex.select('*', knex.raw(`
+        CURRENT_DATE = date_trunc('day', date) as today,
+        date < CURRENT_TIMESTAMP as has_past`))
+    .from('requests')
+    .innerJoin('hearings', {'requests.case_id': 'hearings.case_id'})
     .where('requests.known_case', false)
 }
 
 /**
- * Inform subscriber that we found this case and will send reminders before future hearings
- *
+ * Inform subscriber that we found this case and will send reminders before future hearings.
+ * Perform both actions inside transaction so if we only update DB if twilio suceeds
  * @param {*} request_case object from join of request and case table
  */
 function updateAndNotify(request_case) {
-    console.log("case: ", request_case)
     const phone = db.decryptPhone(request_case.phone);
     return knex.transaction(trx => {
         return  trx('requests')
         .where('phone', request_case.phone)
         .andWhere('case_id', request_case.case_id )
-        .update('known_case', true)
+        .update({
+            'known_case': true,
+            'updated_at': knex.fn.now()
+        })
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
     })
     .catch(err => {
-        // catch here to allow Promise.all() to send remaining
-        console.log("Error sending update notification", err) // better logging coming
+        // catch here to allow Promise.all() to send remaining messages if there's an error on one.
+        console.log("Error sending update notification", err) // [TODO: better logging here]
         return ("Update error")
     })
 }
 
 /**
- * Hook for processing all applicable queued messages.
+ * Hook for processing all requests which have not yet been matched to a real case_id.
  *
  * @return {Promise} Promise to process all queued messages.
  */
 
-function sendQueued() {
-    return discoverNewCitations()
-    .then(resultsArray => Promise.all(resultsArray.map(r => updateAndNotify(r))))
+async function sendUnmatched() {
+    const discovered = await discoverNewCitations()
+    const discovered_sent = await Promise.all(discovered.map(r => updateAndNotify(r)))
 
-    /*
-    return getExpiredRequests()
-    .then(resultsArray => Promise.all(resultsArray.map(r => deleteAndNotify(r))))
-    */
-    //.then(resultsArray => Promise.all(resultsArray.map(r => processCitationMessage(r))));
+    const expired = await getExpiredRequests()
+    const expired_sent =await Promise.all(expired.map((r => deleteAndNotify(r))))
+
+    return discovered.concat(expired)
 }
 
 module.exports = {
-    sendQueued,
-    discoverNewCitations,
+    sendUnmatched,
 };

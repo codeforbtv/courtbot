@@ -54,7 +54,7 @@ app.get('/cases', (req, res, next) => {
         return res.sendStatus(400);
     }
 
-  return db.fuzzySearch(req.query.q)
+    return db.fuzzySearch(req.query.q)
     .then((data) => {
       if (data) {
         data.forEach((d) => {
@@ -67,49 +67,41 @@ app.get('/cases', (req, res, next) => {
 });
 
 /**
- * strips line feeds, returns, and emojis from string and trims it
+ * Twilio Hook for incoming text messages
+ */
+app.post('/sms',
+    cleanupTextMiddelWare,
+    stopMiddleware,
+    yesNoMiddleware,
+    caseIdMiddleware,
+    unservicableRequest
+);
+
+/**
+ * Strips line feeds, returns, and emojis from string and trims it
  *
  * @param  {String} text incoming message to evaluate
  * @return {String} cleaned up string
  */
-function cleanupText(text) {
-    text = text.replace(/[\r\n|\n].*/g, '');
-    return emojiStrip(text).trim();
+function cleanupTextMiddelWare(req,res, next) {
+    let text = req.body.Body.replace(/[\r\n|\n].*/g, '');
+    req.body.Body = emojiStrip(text).trim().toUpperCase();
+    next()
 }
 
+/* Middleware functions */
 /**
- * checks for an affirmative response
- *
- * @param  {String} text incoming message to evaluate
- * @return {Boolean} true if the message is an affirmative response
- */
-function isResponseYes(text) {
-    text = text.toUpperCase().trim();
-    return (text === 'YES' || text === 'YEA' || text === 'YUP' || text === 'Y');
-}
-
-/**
- * checks for negative or declined response
- *
- * @param  {String} text incoming message to evaluate
- * @return {Boolean} true if the message is a negative response
- */
-function isResponseNo(text) {
-    text = text.toUpperCase().trim();
-    return (text === 'NO' || text === 'N');
-}
-
-/**
- * Allows user to remove ALL reminders (both matched to a case and not)
- *
+ * Checks for 'STOP' text. Allows user to remove reminders (both matched to a case and not)
+ * Currently it removes ALL reminders but only after asking the user to confirm.
  */
 function stopMiddleware(req, res, next){
-    const text = cleanupText(req.body.Body.toUpperCase());
+    const text = req.body.Body
     if (text !== 'STOP') return next()
 
     const twiml = new MessagingResponse();
 
     if (!req.session.stopconfirmed ) {
+        // This should be the first time we heard 'Stop' from the user. Confirm before delete
         db.requestsFor(req.body.From)
         .then(case_ids => {
             if (case_ids.length === 0) {
@@ -121,6 +113,7 @@ function stopMiddleware(req, res, next){
         res.send(twiml.toString());
         })
     } else {
+        // The user has confirmed 'Stop'. Go ahead and delete.
         db.deleteRequestsFor(req.body.From)
         .then(case_ids => {
             if (case_ids.length === 0) {
@@ -134,104 +127,106 @@ function stopMiddleware(req, res, next){
     }
 }
 
-function askedReminderMiddleware(req, res, next) {
-    if (isResponseYes(req.body.Body) || isResponseNo(req.body.Body)) {
-        if (req.session.askedReminder) {
-            req.askedReminder = true;
-            req.match = req.session.match;
-            next();
-            return;
-        }
-        /*
-        db.findAskedQueued(req.body.From)
-        .then((data) => {
-            if (data.length === 1) { // Only respond if we found one queue response "session"
-                req.askedReminder = true;
-                req.match = data[0];
-            }
-            next();
+/**
+ * Checks for an affirmative response
+ *
+ * @param  {String} text incoming message to evaluate
+ * @return {Boolean} true if the message is an affirmative response
+ */
+function isResponseYes(text) {
+    return (text === 'YES' || text === 'YEA' || text === 'YUP' || text === 'Y');
+}
+
+/**
+ * Checks for negative or declined response
+ *
+ * @param  {String} text incoming message to evaluate
+ * @return {Boolean} true if the message is a negative response
+ */
+function isResponseNo(text) {
+    return (text === 'NO' || text === 'N');
+}
+
+/**
+ *  Handles cases when user has send a yes or no text.
+ */
+function yesNoMiddleware(req, res, next) {
+    // Yes or No resonses are only meaningful if we also know the citation ID.
+    if (!req.session.case_id) return next()
+
+    const twiml = new MessagingResponse();
+    if (isResponseYes(req.body.Body)) {
+        db.addRequest({
+            case_id: req.session.case_id,
+            phone: req.body.From,
+            known_case: req.session.known_case
+        })
+        .then(() => {
+            twiml.message(req.session.known_case ? messages.weWillRemindYou() : messages.weWillKeepLooking() );
+            req.session.case_id = null;
+            req.session.known_case = null;
+            res.send(twiml.toString());
         })
         .catch(err => next(err));
-        */
+    } else if (isResponseNo(req.body.Body)) {
+        req.session.case_id = null;
+        req.session.known_case = null;
+        twiml.message(messages.forMoreInfo());
+        res.send(twiml.toString());
+    } else{
         next()
-    } else {
-        next();
     }
 }
 
-/* Respond to text messages that come in from Twilio */
-app.post('/sms',
-    stopMiddleware,
-    askedReminderMiddleware,
-    (req, res, next) => {
+/**
+ * Test message to see if it looks like a case id.
+ * Currently alphan-numeric plus '-' between 6 and 25 characters
+ * @param {String} text
+ */
+function possibleCaseID(text) {
+    // Case/Citation IDs should be alpha numeric with possible '-'
+    // between 6 and 25 characters
+    const rx = /^[A-Za-z0-9-]{6,25}$/
+    return rx.test(text);
+}
+
+/**
+ * If input looks like a case number handle it
+ *
+ */
+function caseIdMiddleware(req, res, next){
     const twiml = new MessagingResponse();
-    const text = cleanupText(req.body.Body.toUpperCase());
-    if (req.askedReminder) {
-        if (isResponseYes(text)) {
-            db.addReminder({
-                case_id: req.match.case_id,
-                phone: req.body.From,
-            })
-            .then(() => {
-                twiml.message(messages.weWillRemindYou());
-                req.session.askedReminder = false;
-                res.send(twiml.toString());
-            })
-            .catch(err => next(err));
-        } else {
-            twiml.message(messages.forMoreInfo());
-            req.session.askedReminder = false;
-            res.send(twiml.toString());
-        }
-        return;
-    }
+    const text = req.body.Body
+    if (!possibleCaseID(text)) return next()
 
-    if (req.session.askedQueued) {
-        if (isResponseYes(text)) {
-            db.addQueued({
-                case_id: req.session.citationId,
-                phone: req.body.From,
-            })
-            .then(() => {
-                twiml.message(messages.weWillKeepLooking());
-                req.session.askedQueued = false;
-                res.send(twiml.toString());
-            })
-            .catch(err => next(err));
-        return;
-        } else if (isResponseNo(text)) {
-            twiml.message(messages.forMoreInfo());
-            req.session.askedQueued = false;
-            res.send(twiml.toString());
-            return;
-        }
-    }
-
-    db.findCitation(text)
+    db.findCitation(req.body.Body)
     .then(results => {
-        if (!results || results.length === 0 || results.length > 1) {
-            const correctLengthCitation = text.length >= 6 && text.length <= 25;
-            if (correctLengthCitation) {
-                twiml.message(messages.notFoundAskToKeepLooking());
-                req.session.citationId = text;
-                req.session.askedQueued = true;
-                req.session.askedReminder = false;
-            } else {
-                twiml.message(messages.invalidCaseNumber());
-            }
+        if (!results || results.length === 0){
+            // Looks like it could be a citation that we don't know about yet
+            twiml.message(messages.notFoundAskToKeepLooking());
+            req.session.known_case = false;
+            req.session.case_id = text;
         } else {
-            const match = results[0];
-            twiml.message(messages.foundItAskForReminder(false, match));
-
-            req.session.match = match;
-            req.session.askedReminder = true;
-            req.session.askedQueued = false;
+            // They sent a known citation!
+            twiml.message(messages.foundItAskForReminder(results[0]));
+            req.session.case_id = text;
+            req.session.known_case = true;
         }
-
         res.send(twiml.toString());
     })
     .catch(err => next(err));
-});
+}
+
+/**
+ * None of our middleware could figure out what to do with the input
+ * [TODO: create a better message to help users use the service]
+ */
+function unservicableRequest(req, res, next){
+    // this would be a good place for some instructions to the user
+    const twiml = new MessagingResponse();
+    twiml.message(messages.invalidCaseNumber());
+    res.send(twiml.toString());
+}
 
 /* Error handling Middleware */
 app.use((err, req, res, next) => {

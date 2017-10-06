@@ -20,8 +20,8 @@ require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => moment(date).tz(proce
  * @type {Object}
  */
 const createTableInstructions = {
-    cases() {
-        return knex.schema.createTableIfNotExists('cases', (table) => {
+    hearings() {
+        return knex.schema.createTableIfNotExists('hearings', (table) => {
             table.string('defendant', 100);
             table.timestamp('date');
             table.string('room', 100);
@@ -78,9 +78,6 @@ function acquireSingleConnection(){
     })
 }
 
-function returnConnection(client){
-    knex.client.pool.release(client)
-}
 /**
  * Manually close database connection.
  *
@@ -148,5 +145,4 @@ module.exports = {
   batchInsert,
   knex,
   acquireSingleConnection,
-  returnConnection
 };

@@ -35,6 +35,30 @@ function forMoreInfo() {
     return normalizeSpaces(`OK. You can always go to ${process.env.COURT_PUBLIC_URL}
     for more information about your case and contact information.`);
 }
+/**
+ * tell them of the court date, and ask them if they would like a reminder
+ *
+ * @param  {Boolean} includeSalutation true if we should greet them
+ * @param  {string} name Name of cited person/defendant.
+ * @param  {moment} datetime moment object containing date and time of court appearance.
+ * @param  {string} room room of court appearance.
+ * @return {String} message.
+ */
+function foundItAskForReminder(match) {
+    const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
+        ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
+        at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
+
+    let futureHearing = '';
+    if (match.has_past) {
+        futureHearing = ' a future hearing';
+    } else if (match.today) { // Hearing today
+        futureHearing = ' a future hearing';
+    }
+
+    return normalizeSpaces(`${caseInfo}
+        Would you like a courtesy reminder the day before${futureHearing}? (reply YES or NO)`);
+}
 
 /**
  * tell them of the court date, and ask them if they would like a reminder
@@ -59,7 +83,7 @@ function foundItWillRemind(includeSalutation, match) {
     }
 
     return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
-        We will send you a courtesy reminder the day before${futureHearing}`);
+        We will send you courtesy reminders the day before${futureHearing}.`);
 }
 
 /**
@@ -113,7 +137,7 @@ function reminder(occurrence) {
  * @return {string} Not Found Message
  */
 function unableToFindCitationForTooLong(case_ids) {
-    return normalizeSpaces(`We haven't been able to find your court case${case_ids.length ? 's': ''}: ${case_ids.join(', ')}.
+    return normalizeSpaces(`We haven't been able to find your court case${case_ids.length > 1 ? 's': ''}: ${case_ids.join(', ')}.
         You can go to ${process.env.COURT_PUBLIC_URL} for more information.
         - ${process.env.COURT_NAME}`);
 }
@@ -147,7 +171,7 @@ function weWillRemindYou() {
  * @return {string} message
  */
 function confirmStop(cases){
-    return normalizeSpaces(`You are currently scheduled to receive reminders for ${cases.length} case${cases.length > 1 ? 's' :''}
+    return normalizeSpaces(`You are currently scheduled to receive reminders for ${cases.length} case${cases.length > 1 ? 's' :''}.
     To stop receiving reminders for these cases send 'STOP' again.
     You can go to ${process.env.COURT_PUBLIC_URL} for more information.
     - ${process.env.COURT_NAME}`);
@@ -195,6 +219,7 @@ function send(to, from, body) {
 
 module.exports = {
     forMoreInfo,
+    foundItAskForReminder,
     foundItWillRemind,
     iAmCourtBot,
     invalidCaseNumber,
