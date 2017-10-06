@@ -35,7 +35,6 @@ function forMoreInfo() {
     return normalizeSpaces(`OK. You can always go to ${process.env.COURT_PUBLIC_URL}
     for more information about your case and contact information.`);
 }
-
 /**
  * tell them of the court date, and ask them if they would like a reminder
  *
@@ -45,8 +44,7 @@ function forMoreInfo() {
  * @param  {string} room room of court appearance.
  * @return {String} message.
  */
-function foundItAskForReminder(includeSalutation, match) {
-    const salutation = `Hello from the ${process.env.COURT_NAME}. `;
+function foundItAskForReminder(match) {
     const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
         ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
         at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
@@ -58,8 +56,34 @@ function foundItAskForReminder(includeSalutation, match) {
         futureHearing = ' a future hearing';
     }
 
-    return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
+    return normalizeSpaces(`${caseInfo}
         Would you like a courtesy reminder the day before${futureHearing}? (reply YES or NO)`);
+}
+
+/**
+ * tell them of the court date, and ask them if they would like a reminder
+ *
+ * @param  {Boolean} includeSalutation true if we should greet them
+ * @param  {string} name Name of cited person/defendant.
+ * @param  {moment} datetime moment object containing date and time of court appearance.
+ * @param  {string} room room of court appearance.
+ * @return {String} message.
+ */
+function foundItWillRemind(includeSalutation, match) {
+    const salutation = `Hello from the ${process.env.COURT_NAME}. `;
+    const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
+        ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
+        at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
+
+    let futureHearing = '';
+    if (match.has_past) {
+        futureHearing = ' future hearings';
+    } else if (match.today) { // Hearing today
+        futureHearing = ' future hearings';
+    }
+
+    return normalizeSpaces(`${(includeSalutation ? salutation : '')}${caseInfo}
+        We will send you courtesy reminders the day before${futureHearing}.`);
 }
 
 /**
@@ -112,15 +136,15 @@ function reminder(occurrence) {
  *
  * @return {string} Not Found Message
  */
-function unableToFindCitationForTooLong() {
-    return normalizeSpaces(`We haven't been able to find your court case.
+function unableToFindCitationForTooLong(case_ids) {
+    return normalizeSpaces(`We haven't been able to find your court case${case_ids.length > 1 ? 's': ''}: ${case_ids.join(', ')}.
         You can go to ${process.env.COURT_PUBLIC_URL} for more information.
         - ${process.env.COURT_NAME}`);
 }
 
 /**
  * tell them we will keep looking for the case they inquired about
- *
+ * @param {Array} cases
  * @return {string} message
  */
 function weWillKeepLooking() {
@@ -141,6 +165,40 @@ function weWillRemindYou() {
         to ${process.env.COURT_PUBLIC_URL}.`);
 }
 
+/**
+ * ask for confirmation before stopping reminders
+ * @param {Array} cases
+ * @return {string} message
+ */
+function confirmStop(cases){
+    return normalizeSpaces(`You are currently scheduled to receive reminders for ${cases.length} case${cases.length > 1 ? 's' :''}.
+    To stop receiving reminders for these cases send 'STOP' again.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`);
+}
+
+/**
+ * tell them we will stop sending reminders about cases
+ * @param {Array} cases
+ * @return {string} message
+ */
+function weWillStopSending(cases) {
+    return normalizeSpaces(`OK. We will stop sending reminders for the following case number${cases.length > 1 ? 's' :''}:
+    ${cases.join(', ')}. If you want to resume reminders you can text these numbers to us again.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`);
+}
+
+/**
+ * tell them we don't have any requests in the system for them
+ *
+ * @return {String} message.
+ */
+function youAreNotFollowingAnything(){
+    return normalizeSpaces(`You are not currently subscribed for any reminders. If you want to be reminded
+    about an upcoming hearing, send us the case/citation number. You can go to ${process.env.COURT_PUBLIC_URL} for more information.
+    - ${process.env.COURT_NAME}`)
+}
 
 /**
  * Send a twilio message
@@ -162,6 +220,7 @@ function send(to, from, body) {
 module.exports = {
     forMoreInfo,
     foundItAskForReminder,
+    foundItWillRemind,
     iAmCourtBot,
     invalidCaseNumber,
     notFoundAskToKeepLooking,
@@ -170,4 +229,7 @@ module.exports = {
     reminder,
     send,
     unableToFindCitationForTooLong,
+    weWillStopSending,
+    youAreNotFollowingAnything,
+    confirmStop,
 };

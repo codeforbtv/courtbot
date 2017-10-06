@@ -6,7 +6,7 @@
   "scripts": {
     "test": "NODE_ENV=test mocha test",
     "start": "node web.js",
-    "dbsetup": "node utils/createQueuedTable; node utils/createRemindersTable",
+    "dbsetup": "node utils/createNotificationsTable; node utils/createRequestsTable",
     "loaddata": "node runners/load.js"
   },
   "author": "Sam Hashemi",
@@ -17,7 +17,7 @@
   "dependencies": {
     "body-parser": "^1.18.2",
     "cookie-session": "^1.3.1",
-    "csv-parse": "~1.2.3",
+    "csv": "^1.1.1",
     "dotenv": "~4.0.0",
     "emoji-strip": "^1.0.1",
     "express": "~4.15.4",
@@ -26,6 +26,7 @@
     "moment": "~2.18.1",
     "moment-timezone": "^0.5.5",
     "pg": "^7.3.0",
+    "pg-copy-streams": "^1.2.0",
     "request": "~2.82.0",
     "rollbar": "^0.6.3",
     "sha1": "~1.1.0",

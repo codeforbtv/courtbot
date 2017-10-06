@@ -8,7 +8,7 @@ rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
 
 runnerScript()
 .then((success) => {
-    console.log('Success: ', success);
+    console.log('Success: ', success.length);
     process.exit(0);
 })
 .catch((err) => {

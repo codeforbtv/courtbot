@@ -1,14 +1,14 @@
 /* eslint "no-console": "off" */
 
 require('dotenv').config(); // needed for local dev when not using Heroku to pull in env vars
-const runnerScript = require('../sendQueued.js').sendQueued;
+const runnerScript = require('../sendUnmatched.js').sendUnmatched;
 const rollbar = require('rollbar');
 
 rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
 
 runnerScript()
 .then((success) => {
-    console.log(success);
+    console.log('Success: ', success.length);
     process.exit(0);
 })
 .catch((err) => {

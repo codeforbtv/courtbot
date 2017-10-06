@@ -3,10 +3,6 @@ const crypto = require('crypto');
 const manager = require('./utils/db/manager');
 const knex = manager.knex;
 
-function escapeSQL(val) {
-    return val.replace(/[^A-Za-z0-9\-]/g, '');
-}
-
 /**
  * encrypts the phone number
  *
@@ -35,74 +31,87 @@ function decryptPhone(phone) {
     return decipher.update(phone, 'hex', 'utf8') + decipher.final('utf8');
 }
 
-function findCitation(citation) {
-    const cleanedCitation = escapeSQL(citation.toUpperCase().trim());
-    return knex('cases').where('citations', '@>', `[{"id": "${cleanedCitation}"}]`)
+/**
+ * Given a case id return the hearing(s)
+ * @param {string} case_id
+ * return
+ */
+function findCitation(case_id) {
+    return knex('hearings').where('case_id', case_id )
     .select('*', knex.raw(`
         CURRENT_DATE = date_trunc('day', date) as today,
         date < CURRENT_TIMESTAMP as has_past
     `))
 }
-// Find queued citations that we have asked about adding reminders
-function findAskedQueued(phone) {
-    // Filter for new ones. If too old, user probably missed the message (same timeframe
-    // as Twilio sessions - 4 hours). Return IFF one found. If > 1 found, skip
-    return knex('queued')
-    .where('phone', encryptPhone(phone)).andWhere('asked_reminder', true)
-    .andWhereRaw(`"asked_reminder_at" > CURRENT_TIMESTAMP - interval '4 hours'`)
-    .select()
-    .then((rows) => {
-        if (rows.length === 1) {
-            return knex('queued')
-            .where('queued_id', rows[0].queued_id)
-            .update({ asked_reminder: false })
-            .then(() => knex('cases').where('citations', '@>', `[{"id": "${rows[0].citation_id}"}]`));
-      }
-      return [];
-    });
+/**
+ * Find request's case_ids based on phone
+ * @param {string} phone
+ * @returns {Promise} resolves to an array of case_ids
+ */
+function requestsFor(phone) {
+    return knex('requests')
+    .where('phone', encryptPhone(phone))
+    .select('case_id')
+}
+/**
+ * Deletes requests associated with phone number
+ * @param {string} phone
+ * @returns {Promise} resolves deleted case ids
+ */
+function deleteRequestsFor(phone){
+    return knex('requests')
+    .where('phone', encryptPhone(phone))
+    .del()
+    .returning('case_id')
 }
 
+/**
+ * Find hearings based on case_id or partial name search
+ * @param {string} str
+ * @returns {Promise} array of rows from hearings table
+ */
 function fuzzySearch(str) {
     const parts = str.trim().toUpperCase().split(' ');
 
     // Search for Names
-    let query = knex('cases').where('defendant', 'ilike', `%${parts[0]}%`);
+    let query = knex('hearings').where('defendant', 'ilike', `%${parts[0]}%`);
     if (parts.length > 1) query = query.andWhere('defendant', 'ilike', `%${parts[1]}%`);
 
     // Search for Citations
-    const cleanedCitation = escapeSQL(parts[0]);
-    query = query.orWhere('citations', '@>', `[{"id": "${cleanedCitation}"}]`);
+    query = query.orWhere('case_id',parts[0]);
 
     // Limit to ten results
     query = query.limit(10);
     return query;
 }
 
-function addReminder(data) {
-    return knex('reminders').insert({
-        case_id: data.caseId,
-        sent: false,
-        phone: encryptPhone(data.phone),
-        created_at: knex.raw('CURRENT_TIMESTAMP'),
-        original_case: data.originalCase,
-    });
-}
-
-function addQueued(data) {
-    return knex('queued').insert({
-        citation_id: data.citationId,
-        sent: false,
-        phone: encryptPhone(data.phone),
-        created_at: knex.raw('CURRENT_TIMESTAMP'),
-    });
+/**
+ * Adds the given request. Requests have a unique constraint on (case_id, phone)
+ * adding a duplicate will renew the updated_at date, which in the case of unmatched
+ * requests will start the clock on them again
+ * @param {*} data
+ * @returns {Promise} no resolve value
+ */
+function addRequest(data) {
+    return knex.raw(`
+        INSERT INTO requests
+        (case_id, phone, known_case)
+        VALUES(:case_id ,:phone, :known_case)
+        ON CONFLICT (case_id, phone) DO UPDATE SET updated_at = NOW()`,
+        {
+            case_id: data.case_id,
+            phone: encryptPhone(data.phone),
+            known_case: data.known_case
+        }
+    )
 }
 
 module.exports = {
-    addReminder,
-    addQueued,
+    addRequest,
     decryptPhone,
     encryptPhone,
-    findAskedQueued,
     findCitation,
     fuzzySearch,
+    deleteRequestsFor,
+    requestsFor,
 };

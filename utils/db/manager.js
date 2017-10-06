@@ -13,16 +13,6 @@ const moment = require('moment-timezone')
 const TIMESTAMPTZ_OID = 1184;
 require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => moment(date).tz(process.env.TZ).format());
 
-/**
- * 1.) Create indexing function for cases table using this strategy: http://stackoverflow.com/a/18405706
- * 2.) Drop and recreate index for cases table.
- *
- * @return {Promise} Promise to create indexing function for and index for cases table.
- */
-function createIndexForCases() {
-  return knex.raw('DROP INDEX IF EXISTS citation_ids_gin_idx')
-    .then(() => knex.raw('CREATE INDEX citation_ids_gin_idx ON cases USING GIN (citations jsonb_path_ops)'));
-}
 
 /**
  * Set of instructions for creating tables needed by the courtbot application.
@@ -30,38 +20,36 @@ function createIndexForCases() {
  * @type {Object}
  */
 const createTableInstructions = {
-  cases() {
-    return knex.schema.createTableIfNotExists('cases', (table) => {
-      table.string('id', 100).primary();
-      table.string('defendant', 100);
-      table.timestamp('date');
-      table.string('time', 100);
-      table.string('room', 100);
-      table.jsonb('citations');
-    })
-      .then(() => createIndexForCases());
-  },
-  queued() {
-    return knex.schema.createTableIfNotExists('queued', (table) => {
-      table.increments('queued_id').primary();
-      table.dateTime('created_at');
-      table.string('citation_id', 100);
-      table.string('phone', 100);
-      table.boolean('sent');
-      table.boolean('asked_reminder');
-      table.dateTime('asked_reminder_at');
-    });
-  },
-  reminders() {
-    return knex.schema.createTableIfNotExists('reminders', (table) => {
-      table.increments('reminder_id').primary();
-      table.dateTime('created_at');
-      table.string('case_id', 100);
-      table.string('phone', 100);
-      table.boolean('sent', 100);
-      table.jsonb('original_case');
-    });
-  },
+    hearings() {
+        return knex.schema.createTableIfNotExists('hearings', (table) => {
+            table.string('defendant', 100);
+            table.timestamp('date');
+            table.string('room', 100);
+            table.string('case_id', 100);
+            table.string('type', 100);
+            table.primary(['case_id', 'date']);
+            table.index('case_id');
+        })
+    },
+    requests() {
+        return knex.schema.createTableIfNotExists('requests', (table) => {
+            table.timestamps(true, true);
+            table.string('case_id', 100);
+            table.string('phone', 100);
+            table.boolean('known_case')
+            table.primary(['case_id', 'phone'])
+        });
+    },
+    notifications(){
+        return knex.schema.createTableIfNotExists('notifications', (table) => {
+            table.timestamp('created_at').defaultTo(knex.fn.now());
+            table.string('case_id');
+            table.string('phone');
+            table.timestamp('event_date');
+            table.primary(['case_id', 'phone', 'event_date'])
+            table.foreign(['case_id', 'phone']).onDelete('CASCADE').references(['case_id', 'phone' ]).inTable('requests')
+        })
+    }
 };
 
 /**
@@ -79,6 +67,15 @@ function batchInsert(table, rows, size) {
   return knex.transaction(trx => trx.batchInsert(table, rows, size)
     .then(trx.commit)
     .catch(trx.rollback));
+}
+
+function acquireSingleConnection(){
+    return new Promise((resolve, reject) => {
+        knex.client.pool.acquire((err, client) => {
+            if (err) return reject(err)
+            resolve(client)
+        })
+    })
 }
 
 /**
@@ -147,4 +144,5 @@ module.exports = {
   dropTable,
   batchInsert,
   knex,
+  acquireSingleConnection,
 };
