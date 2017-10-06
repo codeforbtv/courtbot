@@ -51,7 +51,7 @@ describe('Loading of Data', function () {
         it('hits the error callback with a 404 message', function () {
             return loadData(MOCKED_DATA_URL).then(assert.failed, (err) => {
                 console.log("error: ", err.message)
-                expect(err.message).to.include('404 NOT FOUND');
+                expect(err.message).to.include('HTTP Status: 404');
             });
         });
 

@@ -76,13 +76,13 @@ function loadCSV(client, url, csv_type){
     return new Promise(async (resolve, reject) => {
         /*  Since we've transformed csv into [date, defendant, room, id] form, we can just pipe it to postgres */
         const copy_stream = client.query(copyFrom('COPY hearings_temp ("date", "defendant", "room", "case_id", "type") FROM STDIN CSV'));
-        copy_stream.on('error', (err) => reject("can't load data", err))
+        copy_stream.on('error', reject)
         copy_stream.on('end',  resolve)
 
         request.get(url)
         .on('response', function (res) {
             if (res.statusCode !== 200) {
-              this.emit('error', new Error("Error loading CSV: "+res.statusCode +" NOT FOUND"))
+              this.emit('error', new Error("Error loading CSV. Return HTTP Status: "+res.statusCode))
             }
         })
         .on('error', reject)
