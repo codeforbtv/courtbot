@@ -77,8 +77,8 @@ heroku config:set QUEUE_TTL_DAYS=<# days to keep a citation on the search queue>
 heroku config:set TZ=<standard timezone ex. America/Anchorage>
 heroku config:set TEST_TOMORROW_DATES=<1 if you want all court dates to be tomorrow to test reminders>
 git push heroku master
-heroku run node utils/createQueuedTable.js
-heroku run node utils/createRemindersTable.js
+heroku run node utils/createRequestsTable.js
+heroku run node utils/createNotificationsTable.js
 heroku run node runners/load.js
 heroku open
 ```
@@ -98,7 +98,7 @@ Finally, you'll want to setup scheduler to run the various tasks each day. Here'
 
 ## Scheduler Changes
 * node runners/load.js
-* node runners/sendQueued.js
+* node runners/sendUnmatched.js
 * node runners/sendReminders.js
 
 ## Running Tests
