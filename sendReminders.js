@@ -41,7 +41,7 @@ function sendReminder(reminder) {
     .catch(err => {
         // Catch and log here to allow Promise.all() to send remaining reminders
         console.log("Error sending reminder ", err) // better logging coming
-        return ("Send Reminder error")
+        return (new Error(`Error Sending Reminder: ${err}`))
     })
 }
 

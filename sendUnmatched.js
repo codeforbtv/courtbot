@@ -45,7 +45,7 @@ function deleteAndNotify(groupedRequest) {
     .catch(err => {
         // catch here to allow Promise.all() to send remaining
         console.log("Error sending delete notification", err) // better logging coming
-        return ("Delete and Notify error")
+        return (new Error(`Error deleting old request: ${err}`))
     })
 }
 
@@ -83,7 +83,7 @@ function updateAndNotify(request_case) {
     .catch(err => {
         // catch here to allow Promise.all() to send remaining messages if there's an error on one.
         console.log("Error sending update notification", err) // [TODO: better logging here]
-        return ("Update error")
+        return (new Error(`Error sending update: ${err}`))
     })
 }
 
