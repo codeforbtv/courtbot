@@ -40,6 +40,7 @@ function sendReminder(reminder) {
     })
     .catch(err => {
         // Catch and log here to allow Promise.all() to send remaining reminders
+        // Twilio will reject the promise returned by messages.send if a user has unsubscribed.
         console.log("Error sending reminder ", err) // better logging coming
         return (new Error(`Error Sending Reminder: ${err}`))
     })
