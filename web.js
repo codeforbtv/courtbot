@@ -10,6 +10,7 @@ const rollbar = require('rollbar');
 const emojiStrip = require('emoji-strip');
 const messages = require('./utils/messages.js');
 const moment = require("moment-timezone");
+var web_api = require('./web_api/routes');
 
 const app = express();
 
@@ -37,6 +38,9 @@ app.all('*', (req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'X-Requested-With');
     next();
 });
+
+/* Add routes for api access */
+app.use('/api', web_api);
 
 /* Enable CORS support for IE8. */
 app.get('/proxy.html', (req, res) => {

@@ -25,7 +25,7 @@ function findReminders() {
  * Update statuses of reminders that we send messages for.
  *
  * @param  {Object} reminder reminder record that needs to be updated in db.
- * @return {Promise} Promise that resolves to case_id of inserted notification.
+ * @return {Promise} Promise that resolves to the reminder.
  */
 function sendReminder(reminder) {
     const phone = db.decryptPhone(reminder.phone);
@@ -37,12 +37,14 @@ function sendReminder(reminder) {
             event_date: reminder.date
         })
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder)))
+        .then(() => reminder)
     })
     .catch(err => {
         // Catch and log here to allow Promise.all() to send remaining reminders
         // Twilio will reject the promise returned by messages.send if a user has unsubscribed.
-        console.log("Error sending reminder ", err) // better logging coming
-        return (new Error(`Error Sending Reminder: ${err}`))
+        // attach err to returned vale so logging can access it
+        reminder.error = err
+        return reminder
     })
 }
 

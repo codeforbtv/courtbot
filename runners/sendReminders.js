@@ -3,14 +3,13 @@
 require('dotenv').config(); // needed for local dev when not using Heroku to pull in env vars
 const runnerScript = require('../sendReminders.js').sendReminders;
 const rollbar = require('rollbar');
+const log = require('../utils/logger');
 
 rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
 
 runnerScript()
-.then((success) => {
-    console.log('Success: ', success.length);
-    process.exit(0);
-})
+.then(reminders => log.runner({reminders}))
+.then(() => process.exit(0))
 .catch((err) => {
     console.log('Error: ', err);
     // Using callback for process.exit() so the process does not exit before rollbar
