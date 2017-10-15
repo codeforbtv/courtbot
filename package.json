@@ -25,6 +25,7 @@
     "logfmt": "~1.2.0",
     "moment": "~2.18.1",
     "moment-timezone": "^0.5.5",
+    "on-headers": "^1.0.1",
     "pg": "^7.3.0",
     "pg-copy-streams": "^1.2.0",
     "request": "^2.83.0",

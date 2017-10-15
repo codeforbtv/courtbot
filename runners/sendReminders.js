@@ -8,7 +8,7 @@ const log = require('../utils/logger');
 rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
 
 runnerScript()
-.then(reminders => log.runner({reminders}))
+.then(reminders => log.sent({action: 'send_reminder', data: reminders}))
 .then(() => process.exit(0))
 .catch((err) => {
     console.log('Error: ', err);

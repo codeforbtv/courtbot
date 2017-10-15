@@ -136,8 +136,8 @@ function reminder(occurrence) {
  *
  * @return {string} Not Found Message
  */
-function unableToFindCitationForTooLong(case_ids) {
-    return normalizeSpaces(`We haven't been able to find your court case${case_ids.length > 1 ? 's': ''}: ${case_ids.join(', ')}.
+function unableToFindCitationForTooLong(request) {
+    return normalizeSpaces(`We haven't been able to find your court case ${request.case_id}.
         You can go to ${process.env.COURT_PUBLIC_URL} for more information.
         - ${process.env.COURT_NAME}`);
 }

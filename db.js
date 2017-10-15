@@ -2,6 +2,7 @@ require('dotenv').config();
 const crypto = require('crypto');
 const manager = require('./utils/db/manager');
 const knex = manager.knex;
+const log = require('./utils/logger')
 
 /**
  * encrypts the phone number
@@ -93,6 +94,7 @@ function fuzzySearch(str) {
  * @returns {Promise} no resolve value
  */
 function addRequest(data) {
+    data.phone = encryptPhone(data.phone)
     return knex.raw(`
         INSERT INTO requests
         (case_id, phone, known_case)
@@ -100,10 +102,11 @@ function addRequest(data) {
         ON CONFLICT (case_id, phone) DO UPDATE SET updated_at = NOW()`,
         {
             case_id: data.case_id,
-            phone: encryptPhone(data.phone),
+            phone: data.phone,
             known_case: data.known_case
         }
     )
+    .then(() =>  log.request(data))
 }
 
 module.exports = {

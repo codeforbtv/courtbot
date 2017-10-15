@@ -22,8 +22,7 @@ function getExpiredRequests() {
     .whereNotExists(function()  { // should only be neccessary if there's an error in discoverNewCitations
         this.select('*').from('hearings').whereRaw('hearings.case_id = requests.case_id');
     })
-    .select('phone', knex.raw( `array_agg(case_id ORDER BY case_id DESC) as case_ids`))
-    .groupBy('phone')
+    .select('*')
 }
 
 /**
@@ -33,19 +32,23 @@ function getExpiredRequests() {
  *
  * @param {*} groupedRequest is an object with a phone and an array of case_ids.
  */
-function deleteAndNotify(groupedRequest) {
-    const phone = db.decryptPhone(groupedRequest.phone);
+function deleteAndNotify(expiredRequest) {
+    const phone = db.decryptPhone(expiredRequest.phone);
     return knex.transaction(trx => {
         return trx('requests')
-        .where('phone', groupedRequest.phone)
-        .and.whereIn('case_id', groupedRequest.case_ids )
+        .where('phone', expiredRequest.phone)
+        .and.where('case_id', expiredRequest.case_id )
         .del()
-        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(groupedRequest.case_ids)))
+        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(expiredRequest)))
+        .then(() =>  expiredRequest)
     })
     .catch(err => {
         // catch here to allow Promise.all() to send remaining
-        console.log("Error sending delete notification", err) // better logging coming
-        return (new Error(`Error deleting old request: ${err}`))
+        // Numbers from which users have sent Twilio a 'STOP' message will end up here
+        // with a blacklist error. We should test for this and delete the request.
+        // Otherwise it remains in requests and we'll keep attempting to send notifications.
+        expiredRequest.error = err
+        return expiredRequest;
     })
 }
 
@@ -79,11 +82,11 @@ function updateAndNotify(request_case) {
             'updated_at': knex.fn.now()
         })
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
+        .then(() => request_case)
     })
     .catch(err => {
-        // catch here to allow Promise.all() to send remaining messages if there's an error on one.
-        console.log("Error sending update notification", err) // [TODO: better logging here]
-        return (new Error(`Error sending update: ${err}`))
+        request_case.error = err
+        return request_case
     })
 }
 
@@ -94,15 +97,18 @@ function updateAndNotify(request_case) {
  */
 
 async function sendUnmatched() {
-    const discovered = await discoverNewCitations()
-    const discovered_sent = await Promise.all(discovered.map(r => updateAndNotify(r)))
+    const matched = await discoverNewCitations()
+    const matched_sent = await Promise.all(matched.map(r => updateAndNotify(r)))
 
     const expired = await getExpiredRequests()
     const expired_sent =await Promise.all(expired.map((r => deleteAndNotify(r))))
 
-    return discovered.concat(expired)
+    // returning these results to make it easier to log in one place
+    return {expired: expired_sent, matched: matched_sent }
 }
 
 module.exports = {
     sendUnmatched,
+    getExpiredRequests
+
 };

@@ -10,7 +10,9 @@ const rollbar = require('rollbar');
 const emojiStrip = require('emoji-strip');
 const messages = require('./utils/messages.js');
 const moment = require("moment-timezone");
-var web_api = require('./web_api/routes');
+const onHeaders = require('on-headers');
+const log = require('./utils/logger')
+const web_api = require('./web_api/routes');
 
 const app = express();
 
@@ -20,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(cookieSession({
     name: 'session',
-    secret: process.env.COOKIE_SECRET
+    secret: process.env.COOKIE_SECRET,
 }));
 
 /* makes json print nicer for /cases */
@@ -36,6 +38,7 @@ if (app.settings.env === 'development' || app.settings.env === 'test') {
 app.all('*', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'X-Requested-With');
+    onHeaders(res, log.hits)
     next();
 });
 
@@ -167,6 +170,7 @@ function yesNoMiddleware(req, res, next) {
         })
         .then(() => {
             twiml.message(req.session.known_case ? messages.weWillRemindYou() : messages.weWillKeepLooking() );
+            res[log.action] = req.session.known_case? "schedule_reminder" : "schedule_unmatched"
             req.session.case_id = null;
             req.session.known_case = null;
             res.send(twiml.toString());
@@ -175,6 +179,7 @@ function yesNoMiddleware(req, res, next) {
     } else if (isResponseNo(req.body.Body)) {
         req.session.case_id = null;
         req.session.known_case = null;
+        res[log.action] = "decline_reminder"
         twiml.message(messages.forMoreInfo());
         res.send(twiml.toString());
     } else{
@@ -207,11 +212,13 @@ function caseIdMiddleware(req, res, next){
     .then(results => {
         if (!results || results.length === 0){
             // Looks like it could be a citation that we don't know about yet
+            res[log.action] = "unmatched_case"
             twiml.message(messages.notFoundAskToKeepLooking());
             req.session.known_case = false;
             req.session.case_id = text;
         } else {
             // They sent a known citation!
+            res[log.action] = "found_case"
             twiml.message(messages.foundItAskForReminder(results[0]));
             req.session.case_id = text;
             req.session.known_case = true;
@@ -227,6 +234,7 @@ function caseIdMiddleware(req, res, next){
  */
 function unservicableRequest(req, res, next){
     // this would be a good place for some instructions to the user
+    res[log.action] = "Unusable_Input"
     const twiml = new MessagingResponse();
     twiml.message(messages.invalidCaseNumber());
     res.send(twiml.toString());
