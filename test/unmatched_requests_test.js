@@ -76,7 +76,7 @@ describe("with an unmatched request", function() {
     });
 
     it("sends a failure sms after QUEUE_TTL days", function() {
-        const message = `We haven't been able to find your court case: ${case_id}. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}`;
+        const message = `We haven't been able to find your court case ${case_id}. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}`;
         const mockCreatedDate = moment().tz(process.env.TZ).subtract(parseInt(process.env.QUEUE_TTL_DAYS, 10) + 2, 'days');
 
         return knex("requests").update({updated_at: mockCreatedDate})
@@ -85,44 +85,6 @@ describe("with an unmatched request", function() {
         .then(rows => {
             sinon.assert.calledOnce(messageStub)
             sinon.assert.alwaysCalledWithExactly(messageStub, number, process.env.TWILIO_PHONE_NUMBER, message )
-            expect(rows.length).to.equal(0)
-        });
-    });
-});
-
-describe("with more than one unmatched request matched on same day requested by the same number", function() {
-    let messageMock
-    const numbers = ["+12223334444", "+12223334445"] ;
-    const case_ids = ["ABC", "123"]
-    beforeEach(function() {
-        messageMock = sinon.mock(messages)
-
-        return knex('hearings').del()
-        .then(() => knex("requests").del())
-        .then(() => knex("notifications").del())
-        .then(() => knex('hearings').insert([turnerData()]))
-        .then(() => db.addRequest({case_id: case_ids[0], phone: numbers[0], known_case: false}))
-        .then(() => db.addRequest({case_id: case_ids[1], phone: numbers[0], known_case: false}))
-        .then(() => db.addRequest({case_id: case_ids[1], phone: numbers[1], known_case: false}))
-    });
-
-    afterEach(function(){
-        messageMock.restore()
-    });
-
-    it("Should group messages by phone number when subscribed to more than one expiring case_id", function() {
-        const message1 = `We haven't been able to find your court cases: ${case_ids[0]}, ${case_ids[1]}. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}`;
-        const message2 = `We haven't been able to find your court case: ${case_ids[1]}. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}`;
-        messageMock.expects('send').resolves(true).once().withExactArgs(numbers[0], process.env.TWILIO_PHONE_NUMBER, message1)
-        messageMock.expects('send').resolves(true).once().withExactArgs(numbers[1], process.env.TWILIO_PHONE_NUMBER, message2)
-
-        const mockCreatedDate = moment().tz(process.env.TZ).subtract(parseInt(process.env.QUEUE_TTL_DAYS, 10) + 2, 'days');
-
-        return knex("requests").update({updated_at: mockCreatedDate})
-        .then(() => sendUnmatched())
-        .then(res => knex("requests").select("*"))
-        .then(rows => {
-            messageMock.verify()
             expect(rows.length).to.equal(0)
         });
     });

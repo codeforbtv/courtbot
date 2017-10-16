@@ -166,15 +166,14 @@ function weWillRemindYou() {
 }
 
 /**
- * ask for confirmation before stopping reminders
+ * alerts user they are currently getting reminders for this case and gives option to stop
  * @param {Array} cases
  * @return {string} message
  */
-function confirmStop(cases){
-    return normalizeSpaces(`You are currently scheduled to receive reminders for ${cases.length} case${cases.length > 1 ? 's' :''}.
-    To stop receiving reminders for these cases send 'STOP' again.
-    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
-    - ${process.env.COURT_NAME}`);
+function alreadySubscribed(case_id){
+    return normalizeSpaces(`You are currently scheduled to receive reminders for this case.
+    We will attempt to text you a courtesy reminder the day before your hearing date. To stop receiving reminders for this case text 'DELETE'.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.`);
 }
 
 /**
@@ -182,11 +181,10 @@ function confirmStop(cases){
  * @param {Array} cases
  * @return {string} message
  */
-function weWillStopSending(cases) {
-    return normalizeSpaces(`OK. We will stop sending reminders for the following case number${cases.length > 1 ? 's' :''}:
-    ${cases.join(', ')}. If you want to resume reminders you can text these numbers to us again.
-    You can go to ${process.env.COURT_PUBLIC_URL} for more information.
-    - ${process.env.COURT_NAME}`);
+function weWillStopSending(case_id) {
+    return normalizeSpaces(`OK. We will stop sending reminders for case: ${case_id}.
+     If you want to resume reminders you can text this ID to us again.
+    You can go to ${process.env.COURT_PUBLIC_URL} for more information.`);
 }
 
 /**
@@ -231,5 +229,5 @@ module.exports = {
     unableToFindCitationForTooLong,
     weWillStopSending,
     youAreNotFollowingAnything,
-    confirmStop,
+    alreadySubscribed,
 };

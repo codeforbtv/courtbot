@@ -44,6 +44,18 @@ function findCitation(case_id) {
         date < CURRENT_TIMESTAMP as has_past
     `))
 }
+
+/**
+ *
+ * @param {*} case_id
+ * @param {*} phone
+ */
+function findRequest(case_id, phone) {
+    return knex('requests').where('case_id', case_id )
+    .andWhere('phone', encryptPhone(phone) )
+    .select('*')
+}
+
 /**
  * Find request's case_ids based on phone
  * @param {string} phone
@@ -54,6 +66,7 @@ function requestsFor(phone) {
     .where('phone', encryptPhone(phone))
     .select('case_id')
 }
+
 /**
  * Deletes requests associated with phone number
  * @param {string} phone
@@ -64,26 +77,6 @@ function deleteRequestsFor(phone){
     .where('phone', encryptPhone(phone))
     .del()
     .returning('case_id')
-}
-
-/**
- * Find hearings based on case_id or partial name search
- * @param {string} str
- * @returns {Promise} array of rows from hearings table
- */
-function fuzzySearch(str) {
-    const parts = str.trim().toUpperCase().split(' ');
-
-    // Search for Names
-    let query = knex('hearings').where('defendant', 'ilike', `%${parts[0]}%`);
-    if (parts.length > 1) query = query.andWhere('defendant', 'ilike', `%${parts[1]}%`);
-
-    // Search for Citations
-    query = query.orWhere('case_id',parts[0]);
-
-    // Limit to ten results
-    query = query.limit(10);
-    return query;
 }
 
 /**
@@ -106,8 +99,43 @@ function addRequest(data) {
             known_case: data.known_case
         }
     )
-    .then(() =>  log.request(data))
+    .then(() => log.request(data))
 }
+
+/**
+ * Deletes the requests associated with the case_id and phone number
+ * @param {string} case_id
+ * @param {string} unencrypted phone number
+ */
+function deleteRequest(case_id, phone) {
+    const enc_phone = encryptPhone(phone)
+    return knex('requests')
+    .where('phone', enc_phone)
+    .andWhere('case_id', case_id)
+    .del()
+    .then(() => log.delete(case_id, enc_phone))
+}
+
+/**
+ * Find hearings based on case_id or partial name search
+ * @param {string} str
+ * @returns {Promise} array of rows from hearings table
+ */
+function fuzzySearch(str) {
+    const parts = str.trim().toUpperCase().split(' ');
+
+    // Search for Names
+    let query = knex('hearings').where('defendant', 'ilike', `%${parts[0]}%`);
+    if (parts.length > 1) query = query.andWhere('defendant', 'ilike', `%${parts[1]}%`);
+
+    // Search for Citations
+    query = query.orWhere('case_id',parts[0]);
+
+    // Limit to ten results
+    query = query.limit(10);
+    return query;
+}
+
 
 module.exports = {
     addRequest,
@@ -116,5 +144,7 @@ module.exports = {
     findCitation,
     fuzzySearch,
     deleteRequestsFor,
+    deleteRequest,
     requestsFor,
+    findRequest,
 };

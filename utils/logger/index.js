@@ -36,6 +36,7 @@ function logSent(action, data, runner_id) {
     }
     return knex('log_request_events').insert(insert_data)
 }
+
 /**
  * Adds a log entry when a requests (either matched or unmatched) is scheduled
  * @param {Object} data
@@ -52,12 +53,27 @@ function logRequest({case_id, phone, known_case}){
     return knex('log_request_events').insert(insert_data)
 }
 
+function logDeleteRequest(case_id, phone){
+    const insert_data = {
+        case_id: case_id,
+        phone: phone,
+        action: 'delete_reminder'
+    }
+    return knex('log_request_events').insert(insert_data)
+}
+
+/**
+ * Adds an entry to log_runners. Should be called when new csv files are loaded
+ * @param {Object} param
+ * @param {number} param.files - the number of files processed
+ * @param {number} param.records - the number of hearings added
+ */
 function load({files, records}) {
     return knex('log_runners').insert({ runner: 'load', count: records })
     .then(console.log(`Loaded | records: ${records} , csv files: ${files}`))
 }
 
-function hitLogger(meta) {
+function hitLogger() {
     /* 'this' should be the express response object */
     const cipher = crypto.createCipher('aes256', process.env.PHONE_ENCRYPTION_KEY);
     let phone = this.req.body && this.req.body.From ? cipher.update(this.req.body.From, 'utf8', 'hex') + cipher.final('hex') : undefined
@@ -80,7 +96,7 @@ function createDBTables(){
         table.string('phone')
         table.string('hearing_date')
         table.string('hearing_location')
-        table.enu('action', ['send_reminder', 'schedule_reminder', 'schedule_unmatched', 'send_matched', 'send_expired'])
+        table.enu('action', ['send_reminder', 'schedule_reminder', 'schedule_unmatched', 'send_matched', 'send_expired', 'delete_reminder'])
         table.jsonb('error')
         table.integer('runner_id')
         table.timestamp('date').defaultTo(knex.fn.now())
@@ -110,5 +126,6 @@ module.exports = {
     load: load,
     hits: hitLogger,
     request: logRequest,
+    delete: logDeleteRequest,
     action: action_symbol,
 }

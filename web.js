@@ -55,7 +55,8 @@ app.get('/', (req, res) => {
 });
 
 /* Fuzzy search that returns cases with a partial name match or
-   an exact citation match */
+   an exact citation match
+*/
 app.get('/cases', (req, res, next) => {
     if (!req.query || !req.query.q) {
         return res.sendStatus(400);
@@ -79,10 +80,17 @@ app.get('/cases', (req, res, next) => {
 app.post('/sms',
     cleanupTextMiddelWare,
     stopMiddleware,
+    deleteMiddleware,
     yesNoMiddleware,
+    currentRequestMiddleware,
     caseIdMiddleware,
     unservicableRequest
 );
+
+
+/************************
+ * Middleware functions *
+ ************************/
 
 /**
  * Strips line feeds, returns, and emojis from string and trims it
@@ -96,62 +104,22 @@ function cleanupTextMiddelWare(req,res, next) {
     next()
 }
 
-/* Middleware functions */
 /**
- * Checks for 'STOP' text. Allows user to remove reminders (both matched to a case and not)
- * Currently it removes ALL reminders but only after asking the user to confirm.
+ * Checks for 'STOP' text. We will recieve this if the user requests that twilio stop sending texts
+ * All further attempts to send a text (inlcuding responing to this text) will fail until the user restores this.
+ * This will delete any requests the user currently has (alternatively we could mark them inactive and reactiveate if they restart)
  */
 function stopMiddleware(req, res, next){
+    const stop_words = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END','QUIT']
     const text = req.body.Body
-    if (text !== 'STOP') return next()
+    if (!stop_words.includes(text)) return next()
 
-    const twiml = new MessagingResponse();
-
-    if (!req.session.stopconfirmed ) {
-        // This should be the first time we heard 'Stop' from the user. Confirm before delete
-        db.requestsFor(req.body.From)
-        .then(case_ids => {
-            if (case_ids.length === 0) {
-                twiml.message(messages.youAreNotFollowingAnything())
-            } else {
-                req.session.stopconfirmed = true
-                twiml.message(messages.confirmStop(case_ids))
-            }
-        res.send(twiml.toString());
-        })
-    } else {
-        // The user has confirmed 'Stop'. Go ahead and delete.
-        db.deleteRequestsFor(req.body.From)
-        .then(case_ids => {
-            if (case_ids.length === 0) {
-                twiml.message(messages.youAreNotFollowingAnything())
-            } else {
-                req.session.stopconfirmed = null
-                twiml.message(messages.weWillStopSending(case_ids));
-            }
-        res.send(twiml.toString());
-        })
-    }
-}
-
-/**
- * Checks for an affirmative response
- *
- * @param  {String} text incoming message to evaluate
- * @return {Boolean} true if the message is an affirmative response
- */
-function isResponseYes(text) {
-    return (text === 'YES' || text === 'YEA' || text === 'YUP' || text === 'Y');
-}
-
-/**
- * Checks for negative or declined response
- *
- * @param  {String} text incoming message to evaluate
- * @return {Boolean} true if the message is a negative response
- */
-function isResponseNo(text) {
-    return (text === 'NO' || text === 'N');
+    db.deleteRequestsFor(req.body.From)
+    .then(case_ids => {
+        res[log.action] = "stop"
+        console.log("deleted: ", case_ids)
+        return res.sendStatus(200); // once stopped replies don't make it to the user
+    })
 }
 
 /**
@@ -188,25 +156,52 @@ function yesNoMiddleware(req, res, next) {
 }
 
 /**
- * Test message to see if it looks like a case id.
- * Currently alphan-numeric plus '-' between 6 and 25 characters
- * @param {String} text
+ * Handles cases where user has entered a case they are already subscribed to
+ * and then type Delete
  */
-function possibleCaseID(text) {
-    // Case/Citation IDs should be alpha numeric with possible '-'
-    // between 6 and 25 characters
-    const rx = /^[A-Za-z0-9-]{6,25}$/
-    return rx.test(text);
+function deleteMiddleware(req, res, next) {
+    // Delete response is only meaningful if we have a delete_case_id.
+    const case_id = req.session.delete_case_id
+    const phone = req.body.From
+    if (!case_id || req.body.Body !== "DELETE") return next()
+    res[log.action] = "delete_request"
+    const twiml = new MessagingResponse();
+    db.deleteRequest(case_id, phone)
+    .then(() => {
+        twiml.message(messages.weWillStopSending(case_id))
+        res.send(twiml.toString());
+    })
+}
+
+/**
+ * Responds if the sending phone number is alreay subscribed to this case_id=
+ */
+function currentRequestMiddleware(req, res, next) {
+    const text = req.body.Body
+    const phone = req.body.From
+    if (!possibleCaseID(text)) return next()
+    db.findRequest(text, phone)
+    .then(results => {
+        console.log(results)
+        if (!results || results.length === 0) return next()
+
+        const twiml = new MessagingResponse();
+        // looks like they're already subscribed
+        res[log.action] = "already_subscribed"
+        req.session.delete_case_id = text
+        twiml.message(messages.alreadySubscribed(text))
+        res.send(twiml.toString());
+    })
+    .catch(err => next(err));
 }
 
 /**
  * If input looks like a case number handle it
- *
  */
 function caseIdMiddleware(req, res, next){
-    const twiml = new MessagingResponse();
     const text = req.body.Body
     if (!possibleCaseID(text)) return next()
+    const twiml = new MessagingResponse();
 
     db.findCitation(req.body.Body)
     .then(results => {
@@ -239,6 +234,42 @@ function unservicableRequest(req, res, next){
     twiml.message(messages.invalidCaseNumber());
     res.send(twiml.toString());
 }
+
+/****************************
+ * Utility helper functions *
+ ****************************/
+/**
+ * Test message to see if it looks like a case id.
+ * Currently alphan-numeric plus '-' between 6 and 25 characters
+ * @param {String} text
+ */
+function possibleCaseID(text) {
+    // Case/Citation IDs should be alpha numeric with possible '-'
+    // between 6 and 25 characters
+    const rx = /^[A-Za-z0-9-]{6,25}$/
+    return rx.test(text);
+}
+
+/**
+ * Checks for an affirmative response
+ *
+ * @param  {String} text incoming message to evaluate
+ * @return {Boolean} true if the message is an affirmative response
+ */
+function isResponseYes(text) {
+    return (text === 'YES' || text === 'YEA' || text === 'YUP' || text === 'Y');
+}
+
+/**
+ * Checks for negative or declined response
+ *
+ * @param  {String} text incoming message to evaluate
+ * @return {Boolean} true if the message is a negative response
+ */
+function isResponseNo(text) {
+    return (text === 'NO' || text === 'N');
+}
+
 
 /* Error handling Middleware */
 app.use((err, req, res, next) => {

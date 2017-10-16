@@ -368,7 +368,7 @@ describe("POST /sms", function() {
         });
     });
 
-    describe("User texts 'STOP'", function() {
+    describe("Deleting requests", function() {
         const number = '+12223334444'
         const number2 = "+10000000000"
         const case_id = turnerData().case_id
@@ -389,44 +389,33 @@ describe("POST /sms", function() {
             .then(() => knex('requests').insert([request1, request2]))
         })
 
-        describe("with no session set", function(){
-            it("sends a confirmation if users has existing requests", function (done){
-                const params = { Body: " StoP ", From: number };
+        describe("Without delete_case_id set on session", function(){
+            it("tells them they are subscribed and gives instuction on deleting", function (done){
+                const params = { Body: case_id, From: number };
                 sess.post('/sms').send(params)
                 .expect(200)
                 .end(function(err, res){
                     if (err) return done(err)
-                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are currently scheduled to receive reminders for 1 case. To stop receiving reminders for these cases send 'STOP' again. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}</Message></Response>`);
-                    expect(getConnectCookie(sess).stopconfirmed).to.be.true;
-                    done()
-                })
-            })
-            it("Informs use if they aren't subscribed to any case ids", function(done){
-                const params = { Body: " StoP ", From: "+5555555555" };
-                sess.post('/sms').send(params)
-                .expect(200)
-                .end(function(err, res){
-                    if (err) return done(err)
-                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are not currently subscribed for any reminders. If you want to be reminded about an upcoming hearing, send us the case/citation number. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}</Message></Response>`);
-                    expect(getConnectCookie(sess).stopconfirmed).to.be.undefined;
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are currently scheduled to receive reminders for this case. We will attempt to text you a courtesy reminder the day before your hearing date. To stop receiving reminders for this case text 'DELETE'. You can go to ${process.env.COURT_PUBLIC_URL} for more information.</Message></Response>`);
+                    expect(getConnectCookie(sess).delete_case_id).to.equal('4928456')
                     done()
                 })
             })
         })
 
-        describe("with 'stopconfirmed' on session set", function(){
-            var cookieObj = {stopconfirmed: true};
+        describe("send delete with 'delete_case_id' on session set", function(){
+            var cookieObj = {delete_case_id: case_id};
             var cookieb64 = new Buffer(JSON.stringify(cookieObj)).toString('base64');
             var sig = keys.sign('session='+cookieb64);
             var cookieArr = ['session='+cookieb64 + '; session.sig=' + sig + '; Path=/;'];
 
             it("deletes user's (and only user's) requests", function(done){
-                const params = { Body: " StoP ", From: number };
+                const params = { Body: " Delete ", From: number };
                 sess.post('/sms').set('Cookie', cookieArr).send(params)
                 .expect(200)
                 .end(function(err, res){
                     if (err) return done(err)
-                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. We will stop sending reminders for the following case number: ${case_id}. If you want to resume reminders you can text these numbers to us again. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}</Message></Response>`);
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. We will stop sending reminders for case: ${case_id}. If you want to resume reminders you can text this ID to us again. You can go to ${process.env.COURT_PUBLIC_URL} for more information.</Message></Response>`);
 
                     knex('requests').select('*')
                     .then(rows => {
