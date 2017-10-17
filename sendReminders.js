@@ -46,6 +46,7 @@ function sendReminder(reminder) {
         reminder.error = err
         return reminder
     })
+
 }
 
 /**

@@ -13,7 +13,6 @@ const moment = require('moment-timezone')
 const TIMESTAMPTZ_OID = 1184;
 require('pg').types.setTypeParser(TIMESTAMPTZ_OID, date => moment(date).tz(process.env.TZ).format());
 
-
 /**
  * Set of instructions for creating tables needed by the courtbot application.
  *

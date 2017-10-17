@@ -2,21 +2,13 @@
 
 require('dotenv').config(); // needed for local dev when not using Heroku to pull in env vars
 const runnerScript = require('../utils/loaddata.js');
-const rollbar = require('rollbar');
-const log = require('../utils/logger')
-
-rollbar.init(process.env.ROLLBAR_ACCESS_TOKEN);
+const manager = require('../utils/db/manager')
+const {runners, logger} = require('../utils/logger')
 
 runnerScript()
-.then(log.load)
-.then((success) => process.exit(0))
+.then((r) => runners.loaded(r))
+.then(() => manager.knex.destroy())
 .catch((err) => {
-    console.log('In catch Error: ', err);
-    // Using callback for process.exit() so the process does not exit before rollbar
-    //    is finished sending error.
-    //    Sending null as second arg since there is no
-    //    request object
-    rollbar.handleError(err, null, () => {
-        process.exit(1);
-    });
+    manager.knex.destroy()
+    logger.error(err)
 });

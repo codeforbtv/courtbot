@@ -99,7 +99,7 @@ function addRequest(data) {
             known_case: data.known_case
         }
     )
-    .then(() => log.request(data))
+    .then(() => log.request.add(data))
 }
 
 /**
@@ -113,7 +113,7 @@ function deleteRequest(case_id, phone) {
     .where('phone', enc_phone)
     .andWhere('case_id', case_id)
     .del()
-    .then(() => log.delete(case_id, enc_phone))
+    .then(() => log.request.delete({case_id, phone: enc_phone}))
 }
 
 /**

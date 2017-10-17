@@ -51,7 +51,7 @@ async function loadData(dataUrls) {
 
     var count = await copyTemp(stream_client)
     stream_client.end()
-
+    manager.knex.client.pool.destroy()
     return {files: files.length, records: count}
 }
 /**

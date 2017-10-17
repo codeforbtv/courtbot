@@ -4,32 +4,38 @@ const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const express = require('express');
 const cookieSession = require('cookie-session')
 const bodyParser = require('body-parser')
-const logfmt = require('logfmt');
 const db = require('./db');
-const rollbar = require('rollbar');
+const Rollbar = require('rollbar');
 const emojiStrip = require('emoji-strip');
 const messages = require('./utils/messages.js');
 const moment = require("moment-timezone");
 const onHeaders = require('on-headers');
 const log = require('./utils/logger')
 const web_api = require('./web_api/routes');
+const action_symbol = Symbol.for('action');
+
+const rollbar = new Rollbar({
+    accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
+    captureUncaught: false,
+    captureUnhandledRejections: false
+  });
 
 const app = express();
 
 /* Express Middleware */
-app.use(logfmt.requestLogger());
+
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(cookieSession({
     name: 'session',
     secret: process.env.COOKIE_SECRET,
+ //   signed: false, // causing problems with twilio -- investigating
 }));
 
 /* makes json print nicer for /cases */
 app.set('json spaces', 2);
 
-/* Serve testing page on which you can impersonate Twilio
-   (but not in production) */
+/* Serve testing page on which you can impersonate Twilio (but not in production) */
 if (app.settings.env === 'development' || app.settings.env === 'test') {
     app.use(express.static('public'));
 }
@@ -42,9 +48,6 @@ app.all('*', (req, res, next) => {
     next();
 });
 
-/* Add routes for api access */
-app.use('/api', web_api);
-
 /* Enable CORS support for IE8. */
 app.get('/proxy.html', (req, res) => {
     res.send('<!DOCTYPE HTML>\n<script src="http://jpillora.com/xdomain/dist/0.6/xdomain.min.js" master="http://www.courtrecords.alaska.gov"></script>');
@@ -53,6 +56,9 @@ app.get('/proxy.html', (req, res) => {
 app.get('/', (req, res) => {
     res.status(200).send(messages.iAmCourtBot());
 });
+
+/* Add routes for api access */
+app.use('/api', web_api);
 
 /* Fuzzy search that returns cases with a partial name match or
    an exact citation match
@@ -87,10 +93,7 @@ app.post('/sms',
     unservicableRequest
 );
 
-
-/************************
- * Middleware functions *
- ************************/
+ /* Middleware functions */
 
 /**
  * Strips line feeds, returns, and emojis from string and trims it
@@ -116,10 +119,10 @@ function stopMiddleware(req, res, next){
 
     db.deleteRequestsFor(req.body.From)
     .then(case_ids => {
-        res[log.action] = "stop"
-        console.log("deleted: ", case_ids)
+        res[action_symbol] = "stop"
         return res.sendStatus(200); // once stopped replies don't make it to the user
     })
+    .catch(err => next(err));
 }
 
 /**
@@ -138,16 +141,16 @@ function yesNoMiddleware(req, res, next) {
         })
         .then(() => {
             twiml.message(req.session.known_case ? messages.weWillRemindYou() : messages.weWillKeepLooking() );
-            res[log.action] = req.session.known_case? "schedule_reminder" : "schedule_unmatched"
-            req.session.case_id = null;
-            req.session.known_case = null;
+            res[action_symbol] = req.session.known_case? "schedule_reminder" : "schedule_unmatched"
+            req.session = null;
+            req.session = null;
             res.send(twiml.toString());
         })
         .catch(err => next(err));
     } else if (isResponseNo(req.body.Body)) {
-        req.session.case_id = null;
-        req.session.known_case = null;
-        res[log.action] = "decline_reminder"
+        req.session = null;
+        req.session = null;
+        res[action_symbol] = "decline_reminder"
         twiml.message(messages.forMoreInfo());
         res.send(twiml.toString());
     } else{
@@ -164,13 +167,15 @@ function deleteMiddleware(req, res, next) {
     const case_id = req.session.delete_case_id
     const phone = req.body.From
     if (!case_id || req.body.Body !== "DELETE") return next()
-    res[log.action] = "delete_request"
+    res[action_symbol] = "delete_request"
     const twiml = new MessagingResponse();
     db.deleteRequest(case_id, phone)
     .then(() => {
+        req.session = null;
         twiml.message(messages.weWillStopSending(case_id))
         res.send(twiml.toString());
     })
+    .catch(err => next(err));
 }
 
 /**
@@ -182,12 +187,11 @@ function currentRequestMiddleware(req, res, next) {
     if (!possibleCaseID(text)) return next()
     db.findRequest(text, phone)
     .then(results => {
-        console.log(results)
         if (!results || results.length === 0) return next()
 
         const twiml = new MessagingResponse();
         // looks like they're already subscribed
-        res[log.action] = "already_subscribed"
+        res[action_symbol] = "already_subscribed"
         req.session.delete_case_id = text
         twiml.message(messages.alreadySubscribed(text))
         res.send(twiml.toString());
@@ -207,13 +211,13 @@ function caseIdMiddleware(req, res, next){
     .then(results => {
         if (!results || results.length === 0){
             // Looks like it could be a citation that we don't know about yet
-            res[log.action] = "unmatched_case"
+            res[action_symbol] = "unmatched_case"
             twiml.message(messages.notFoundAskToKeepLooking());
             req.session.known_case = false;
             req.session.case_id = text;
         } else {
             // They sent a known citation!
-            res[log.action] = "found_case"
+            res[action_symbol] = "found_case"
             twiml.message(messages.foundItAskForReminder(results[0]));
             req.session.case_id = text;
             req.session.known_case = true;
@@ -229,15 +233,14 @@ function caseIdMiddleware(req, res, next){
  */
 function unservicableRequest(req, res, next){
     // this would be a good place for some instructions to the user
-    res[log.action] = "Unusable_Input"
+    res[action_symbol] = "Unusable_Input"
     const twiml = new MessagingResponse();
     twiml.message(messages.invalidCaseNumber());
     res.send(twiml.toString());
 }
 
-/****************************
- * Utility helper functions *
- ****************************/
+/* Utility helper functions */
+
 /**
  * Test message to see if it looks like a case id.
  * Currently alphan-numeric plus '-' between 6 and 25 characters
@@ -274,8 +277,7 @@ function isResponseNo(text) {
 /* Error handling Middleware */
 app.use((err, req, res, next) => {
     if (!res.headersSent) {
-        console.log('Error: ', err.message);
-        rollbar.handleError(err, req);
+        log.logger.error(err);
 
         // during development, return the trace to the client for helpfulness
         if (app.settings.env !== 'production') {
@@ -290,11 +292,10 @@ app.use((err, req, res, next) => {
 const options = {
     exitOnUncaughtException: true,
 };
-rollbar.handleUncaughtExceptionsAndRejections(process.env.ROLLBAR_ACCESS_TOKEN, options);
 
 const port = Number(process.env.PORT || 5000);
 app.listen(port, () => {
-    console.log('Listening on ', port);
+    log.logger.info(`Listening on port ${port}`);
 });
 
 module.exports = app;
