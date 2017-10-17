@@ -45,7 +45,7 @@ const config = {
 winston.addColors(config);
 
 const myFormat = printf(info => {
-    return `${info.level}: ${info.timestamp} ${info.message}`
+    return `${info.level}: ${info.timestamp} ${info.message}`.replace(/undefined/g, '')
 });
 
 const logger = createLogger({

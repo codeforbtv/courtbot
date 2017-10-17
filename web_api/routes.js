@@ -22,13 +22,12 @@ db.fuzzySearch(req.query.q)
 
 /* lookup case by id -- not fuzzy */
 router.get('/case', function(req, res, next){
-if (!req.query || !req.query.q) return res.send(400);
+if (!req.query || !req.query.q) return res.sendStatus(400);
 
 db.findHearing(req.query.q)
 .then(data => {
   if (data) {
     data.forEach(function (d) {
-      console.log("data: ", d)
       // Replace postgres' [null] with [] is much nicer on the front end
       d.requests = d.requests.filter(r => r)
       d.readableDate = moment(d.date).format('dddd, MMM Do');
