@@ -14,9 +14,9 @@ function findReminders() {
     return knex.raw(`
         SELECT DISTINCT case_id, phone, defendant, date, room FROM requests
         INNER JOIN hearings USING (case_id)
-        LEFT OUTER JOIN notifications USING (case_id, phone)
         WHERE tstzrange(TIMESTAMP 'tomorrow', TIMESTAMP 'tomorrow' + interval '1 day') @> hearings.date
-        AND  (notifications.event_date != hearings.date OR notifications.event_date IS NULL)
+        AND hearings.case_id NOT IN
+        (SELECT case_id FROM notifications WHERE notifications.type = 'reminder' AND notifications.event_date = hearings.date )
     `)
     .then(result => result.rows)
 }
@@ -34,7 +34,8 @@ function sendReminder(reminder) {
         .insert({
             case_id: reminder.case_id,
             phone:reminder.phone,
-            event_date: reminder.date
+            event_date: reminder.date,
+            type: 'reminder'
         })
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder)))
         .then(() => reminder)

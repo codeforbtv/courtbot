@@ -4,6 +4,8 @@ require('dotenv').config();
 const db_connections = require('./db_connections'); /* eslint camelcase: "off" */
 const knex = require('knex')(db_connections[process.env.NODE_ENV || 'development']);
 const moment = require('moment-timezone')
+const logger = require('../logger')
+
 /**
  * Postgres returns the absolute date string with local offset detemined by its timezone setting.
  * Knex by default creates a javascript Date object from this string.
@@ -35,8 +37,9 @@ const createTableInstructions = {
             table.timestamps(true, true);
             table.string('case_id', 100);
             table.string('phone', 100);
-            table.boolean('known_case')
-            table.primary(['case_id', 'phone'])
+            table.boolean('known_case').defaultTo(false);
+            table.boolean('active').defaultTo(true);
+            table.primary(['case_id', 'phone']);
         });
     },
     notifications(){
@@ -45,11 +48,38 @@ const createTableInstructions = {
             table.string('case_id');
             table.string('phone');
             table.timestamp('event_date');
-            table.primary(['case_id', 'phone', 'event_date'])
+            table.enu('type', ['reminder', 'matched', 'expired'])
+            //table.primary(['case_id', 'phone', 'event_date'])
             table.foreign(['case_id', 'phone']).onDelete('CASCADE').references(['case_id', 'phone' ]).inTable('requests')
         })
     }
 };
+
+checkLogDBTables()
+.then(() => logger.debug("Checking Log Tables"))
+.catch((err) => logger.error(err))
+
+function checkLogDBTables(){
+    /* create log tables if they don't exist */
+    const p1 = knex.schema.createTableIfNotExists('log_runners', function (table) {
+        table.increments()
+        table.enu('runner', ['send_reminder', 'send_expired', 'send_matched','load'])
+        table.integer('count')
+        table.integer('error_count')
+        table.timestamp('date').defaultTo(knex.fn.now())
+    })
+
+    const p2 = knex.schema.createTableIfNotExists('log_hits', function(table){
+        table.timestamp('time').defaultTo(knex.fn.now()),
+        table.string('path'),
+        table.string('method'),
+        table.string('status_code'),
+        table.string('phone'),
+        table.string('body'),
+        table.string('action')
+    })
+    return Promise.all([p1, p2])
+}
 
 /**
  * Insert chunk of data to table
@@ -60,7 +90,7 @@ const createTableInstructions = {
  * @return {Promise}
  */
 function batchInsert(table, rows, size) {
-  console.log('batch inserting', rows.length, 'rows');
+  logger.debug('batch inserting', rows.length, 'rows');
 
   // had to explicitly use transaction for record counts in test cases to work
   return knex.transaction(trx => trx.batchInsert(table, rows, size)
@@ -94,21 +124,21 @@ function closeConnection() {
  * @return {Promise}  Promise to create table if it does not exist.
  */
 function createTable(table) {
-  console.log('Trying to create table:', table);
+    logger.debug('Trying to create table:', table);
   if (!createTableInstructions[table]) {
-    console.log(`No Table Creation Instructions found for table "${table}".`);
+    logger.error(`No Table Creation Instructions found for table "${table}".`);
     return false;
   }
 
   return knex.schema.hasTable(table)
     .then((exists) => {
       if (exists) {
-        return console.log(`Table "${table}" already exists.  Will not create.`);
+        return logger.debug(`Table "${table}" already exists.  Will not create.`);
       }
 
       return createTableInstructions[table]()
         .then(() => {
-          console.log(`Table created: "${table}"`);
+            logger.debug(`Table created: "${table}"`);
         });
     });
 }
@@ -121,7 +151,7 @@ function createTable(table) {
  */
 function dropTable(table) {
   return knex.schema.dropTableIfExists(table)
-    .then(console.log(`Dropped existing table "${table}"`));
+    .then(logger.debug(`Dropped existing table "${table}"`));
 }
 
 /**
@@ -144,4 +174,5 @@ module.exports = {
   batchInsert,
   knex,
   acquireSingleConnection,
+  checkLogDBTables
 };

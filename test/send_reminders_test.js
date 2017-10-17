@@ -203,11 +203,13 @@ const request2_dup = {
 const notification1 = {
     case_id: case1.case_id,
     phone: db.encryptPhone(request1.phone),
-    event_date: TEST_UTC_DATE
+    event_date: TEST_UTC_DATE,
+    type:'reminder'
 }
 
 const notification2 = {
     case_id: case2.case_id,
     phone: db.encryptPhone(request2.phone),
-    event_date: TEST_UTC_DATE2
+    event_date: TEST_UTC_DATE2,
+    type:'reminder'
 }

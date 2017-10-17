@@ -334,8 +334,8 @@ describe("POST /sms", function() {
                     if (err)  return done(err);
 
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
-                    expect(getConnectCookie(sess).case_id).to.be.null;
-                    expect(getConnectCookie(sess).known_case).to.be.null;
+                    expect(getConnectCookie(sess).case_id).to.be.undefined;
+                    expect(getConnectCookie(sess).known_case).to.be.undefined;
 
                     knex("requests").select("*")
                     .then((rows) => {
@@ -356,8 +356,8 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err) return done(err);
                     expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
-                    expect(getConnectCookie(sess).case_id).to.be.null;
-                    expect(getConnectCookie(sess).known_case).to.be.null;
+                    expect(getConnectCookie(sess).case_id).to.be.undefined;
+                    expect(getConnectCookie(sess).known_case).to.be.undefined;
                     knex("requests").count('* as count')
                     .then((rows) => {
                         expect(rows[0].count).to.equal('0');
@@ -370,23 +370,17 @@ describe("POST /sms", function() {
 
     describe("Deleting requests", function() {
         const number = '+12223334444'
-        const number2 = "+10000000000"
         const case_id = turnerData().case_id
-        const request1 = {
+        const request = {
             case_id: case_id,
             phone: db.encryptPhone(number),
-            known_case: true
-        }
-        const request2 = {
-            case_id: case_id,
-            phone: db.encryptPhone(number2),
             known_case: true
         }
         beforeEach(function(){
             return knex('hearings').del()
             .then(() => knex('requests').del())
             .then(() => knex('hearings').insert([turnerData()]))
-            .then(() => knex('requests').insert([request1, request2]))
+            .then(() => knex('requests').insert([request]))
         })
 
         describe("Without delete_case_id set on session", function(){
@@ -409,7 +403,7 @@ describe("POST /sms", function() {
             var sig = keys.sign('session='+cookieb64);
             var cookieArr = ['session='+cookieb64 + '; session.sig=' + sig + '; Path=/;'];
 
-            it("deletes user's (and only user's) requests", function(done){
+            it("marks user's request inactive", function(done){
                 const params = { Body: " Delete ", From: number };
                 sess.post('/sms').set('Cookie', cookieArr).send(params)
                 .expect(200)
@@ -420,7 +414,7 @@ describe("POST /sms", function() {
                     knex('requests').select('*')
                     .then(rows => {
                         expect(rows.length).to.equal(1)
-                        expect(rows[0].phone).to.equal(db.encryptPhone(number2))
+                        expect(rows[0].active).to.be.false
                     })
                     .then(done, done)
                 })

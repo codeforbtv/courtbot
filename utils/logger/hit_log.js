@@ -1,17 +1,16 @@
 const { createLogger, format, transports } = require('winston');
-const { combine, timestamp, label, printf, colorize } = format;
+const { combine, timestamp, printf, colorize } = format;
 const Transport = require('winston-transport');
 const crypto = require('crypto');
-const manager = require("../db/manager");
-const knex = manager.knex;
 const action_symbol = Symbol.for('action');
 const Rollbar = require('rollbar');
 const winston = require('winston');
+const {knex} = require("../db/manager");
 
 const rollbar = new Rollbar({
-  accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
-  captureUncaught: false,
-  captureUnhandledRejections: false
+    accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
+    captureUncaught: false,
+    captureUnhandledRejections: false
 });
 
 class hit_table extends Transport {
@@ -44,9 +43,7 @@ const config = {
 
 winston.addColors(config);
 
-const myFormat = printf(info => {
-    return `${info.level}: ${info.timestamp} ${info.message}`.replace(/undefined/g, '')
-});
+const myFormat = printf(info => `${info.level}: ${info.timestamp} ${info.message}`.replace(/undefined/g, ''));
 
 const logger = createLogger({
     levels: config.levels,
@@ -66,5 +63,14 @@ const logger = createLogger({
 
 logger.on('error', function (err) {rollbar.error(err)});
 
-module.exports = logger
+/**
+ * Basic log for incoming sms and web requests
+ * This function is called by 'on-headers' module in web.js, which
+ * sets the value of 'this' to the Express response object
+ */
+function log() {
+    logger.hit(`${this.req.url} ${this.statusCode} ${this.req.method} ${this.req.body.From} ${this.req.body.Body}  ${this[action_symbol]}`, this)
+}
+
+module.exports = log
 

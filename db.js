@@ -53,6 +53,7 @@ function findCitation(case_id) {
 function findRequest(case_id, phone) {
     return knex('requests').where('case_id', case_id )
     .andWhere('phone', encryptPhone(phone) )
+    .andWhere('active', true)
     .select('*')
 }
 
@@ -72,10 +73,10 @@ function requestsFor(phone) {
  * @param {string} phone
  * @returns {Promise} resolves deleted case ids
  */
-function deleteRequestsFor(phone){
+function deactivateRequestsFor(phone){
     return knex('requests')
     .where('phone', encryptPhone(phone))
-    .del()
+    .update('active', false)
     .returning('case_id')
 }
 
@@ -92,28 +93,26 @@ function addRequest(data) {
         INSERT INTO requests
         (case_id, phone, known_case)
         VALUES(:case_id ,:phone, :known_case)
-        ON CONFLICT (case_id, phone) DO UPDATE SET updated_at = NOW()`,
+        ON CONFLICT (case_id, phone) DO UPDATE SET updated_at = NOW(), active = true`,
         {
             case_id: data.case_id,
             phone: data.phone,
             known_case: data.known_case
         }
     )
-    .then(() => log.request.add(data))
 }
 
 /**
- * Deletes the requests associated with the case_id and phone number
+ * Marks requests associated with the case_id and phone number as inactive
  * @param {string} case_id
  * @param {string} unencrypted phone number
  */
-function deleteRequest(case_id, phone) {
+function deactivateRequest(case_id, phone) {
     const enc_phone = encryptPhone(phone)
     return knex('requests')
     .where('phone', enc_phone)
     .andWhere('case_id', case_id)
-    .del()
-    .then(() => log.request.delete({case_id, phone: enc_phone}))
+    .update('active', false)
 }
 
 /**
@@ -143,8 +142,8 @@ module.exports = {
     encryptPhone,
     findCitation,
     fuzzySearch,
-    deleteRequestsFor,
-    deleteRequest,
+    deactivateRequestsFor,
+    deactivateRequest,
     requestsFor,
     findRequest,
 };

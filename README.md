@@ -41,8 +41,8 @@ createuser courtbot
 Then, to create the tables and load in initial data:
 
 ```console
-node utils/createQueuedTable.js
-node utils/createRemindersTable.js
+node utils/createRequestsTable.js
+node utils/createNotificationsTable.js
 node runners/load.js
 ```
 

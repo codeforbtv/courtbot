@@ -15,9 +15,9 @@ const knex = manager.knex;
 function getExpiredRequests() {
     /* We dont delete these all at once even though that's easier, becuase we only want to
        delete if there's not a tillio (or other) error. */
-
     return knex('requests')
     .where('known_case', false)
+    .andWhere('active', true)
     .and.whereRaw(`updated_at < CURRENT_DATE - interval '${process.env.QUEUE_TTL_DAYS} day'`)
     .whereNotExists(function()  { // should only be neccessary if there's an error in discoverNewCitations
         this.select('*').from('hearings').whereRaw('hearings.case_id = requests.case_id');
@@ -32,13 +32,20 @@ function getExpiredRequests() {
  *
  * @param {*} groupedRequest is an object with a phone and an array of case_ids.
  */
-function deleteAndNotify(expiredRequest) {
+function notifyExpired(expiredRequest) {
     const phone = db.decryptPhone(expiredRequest.phone);
     return knex.transaction(trx => {
         return trx('requests')
         .where('phone', expiredRequest.phone)
         .and.where('case_id', expiredRequest.case_id )
-        .del()
+        .update('active', false)
+        .then(() => trx('notifications')
+            .insert({
+                case_id: expiredRequest.case_id,
+                phone:expiredRequest.phone,
+                type:'expired'
+            })
+        )
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(expiredRequest)))
         .then(() =>  expiredRequest)
     })
@@ -81,6 +88,13 @@ function updateAndNotify(request_case) {
             'known_case': true,
             'updated_at': knex.fn.now()
         })
+        .then(() => trx('notifications')
+            .insert({
+                case_id: request_case.case_id,
+                phone:request_case.phone,
+                type:'matched'
+            })
+        )
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
         .then(() => request_case)
     })
@@ -101,7 +115,7 @@ async function sendUnmatched() {
     const matched_sent = await Promise.all(matched.map(r => updateAndNotify(r)))
 
     const expired = await getExpiredRequests()
-    const expired_sent =await Promise.all(expired.map((r => deleteAndNotify(r))))
+    const expired_sent =await Promise.all(expired.map((r => notifyExpired(r))))
 
     // returning these results to make it easier to log in one place
     return {expired: expired_sent, matched: matched_sent }

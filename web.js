@@ -5,20 +5,14 @@ const express = require('express');
 const cookieSession = require('cookie-session')
 const bodyParser = require('body-parser')
 const db = require('./db');
-const Rollbar = require('rollbar');
 const emojiStrip = require('emoji-strip');
 const messages = require('./utils/messages.js');
 const moment = require("moment-timezone");
 const onHeaders = require('on-headers');
 const log = require('./utils/logger')
+const web_log = require('./utils/logger/hit_log')
 const web_api = require('./web_api/routes');
 const action_symbol = Symbol.for('action');
-
-const rollbar = new Rollbar({
-    accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
-    captureUncaught: false,
-    captureUnhandledRejections: false
-  });
 
 const app = express();
 
@@ -44,7 +38,7 @@ if (app.settings.env === 'development' || app.settings.env === 'test') {
 app.all('*', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'X-Requested-With');
-    onHeaders(res, log.hits)
+    onHeaders(res, web_log)
     next();
 });
 
@@ -117,7 +111,7 @@ function stopMiddleware(req, res, next){
     const text = req.body.Body
     if (!stop_words.includes(text)) return next()
 
-    db.deleteRequestsFor(req.body.From)
+    db.deactivateRequestsFor(req.body.From)
     .then(case_ids => {
         res[action_symbol] = "stop"
         return res.sendStatus(200); // once stopped replies don't make it to the user
@@ -169,7 +163,7 @@ function deleteMiddleware(req, res, next) {
     if (!case_id || req.body.Body !== "DELETE") return next()
     res[action_symbol] = "delete_request"
     const twiml = new MessagingResponse();
-    db.deleteRequest(case_id, phone)
+    db.deactivateRequest(case_id, phone)
     .then(() => {
         req.session = null;
         twiml.message(messages.weWillStopSending(case_id))
@@ -233,7 +227,7 @@ function caseIdMiddleware(req, res, next){
  */
 function unservicableRequest(req, res, next){
     // this would be a good place for some instructions to the user
-    res[action_symbol] = "Unusable_Input"
+    res[action_symbol] = "unusable_input"
     const twiml = new MessagingResponse();
     twiml.message(messages.invalidCaseNumber());
     res.send(twiml.toString());
@@ -295,7 +289,7 @@ const options = {
 
 const port = Number(process.env.PORT || 5000);
 app.listen(port, () => {
-    log.logger.info(`Listening on port ${port}`);
+    log.info(`Listening on port ${port}`);
 });
 
 module.exports = app;
