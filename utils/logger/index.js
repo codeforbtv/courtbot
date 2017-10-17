@@ -15,6 +15,8 @@ const rollbar = new Rollbar({
 });
 
 schema.checkDBTables()
+.then(() => logger.debug('Checking log database tables'))
+.catch(err => logger.error(err))
 
 /**
  * Basic log for incoming sms and web requests
@@ -76,7 +78,7 @@ const logger = createLogger({
         logFormat
       ),
     transports: [
-        new transports.Console(),
+        new transports.Console({level: 'debug'}),
         new rollbarTransport({level: 'error'})
     ]
 })
