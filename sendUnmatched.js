@@ -115,7 +115,7 @@ async function sendUnmatched() {
     const matched_sent = await Promise.all(matched.map(r => updateAndNotify(r)))
 
     const expired = await getExpiredRequests()
-    const expired_sent =await Promise.all(expired.map((r => notifyExpired(r))))
+    const expired_sent = await Promise.all(expired.map((r => notifyExpired(r))))
 
     // returning these results to make it easier to log in one place
     return {expired: expired_sent, matched: matched_sent }
