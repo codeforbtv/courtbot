@@ -81,14 +81,16 @@ function discoverNewCitations() {
 function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
     return knex.transaction(trx => {
-        return  trx('requests')
+        return  knex('requests')
         .where('phone', request_case.phone)
         .andWhere('case_id', request_case.case_id )
+        .transacting(trx)
         .update({
             'known_case': true,
             'updated_at': knex.fn.now()
         })
-        .then(() => trx('notifications')
+        .then(() => knex('notifications')
+            .transacting(trx)
             .insert({
                 case_id: request_case.case_id,
                 phone:request_case.phone,
