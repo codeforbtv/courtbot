@@ -39,7 +39,6 @@ describe("with 2 unmatched requests that now have matching hearings (same case_i
         return sendUnmatched()
         .then(res => knex("requests").select("*"))
         .then(rows => {
-            console.log(rows)
             expect(rows.length).to.equal(2)
             expect(rows[0].known_case).to.be.true;
             expect(rows[1].known_case).to.be.true;

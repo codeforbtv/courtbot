@@ -98,7 +98,6 @@ function updateAndNotify(request_case) {
                 type:'matched'
             })
         )
-        .then(() => console.log(request_case))
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
         .then(() => request_case)
     })
