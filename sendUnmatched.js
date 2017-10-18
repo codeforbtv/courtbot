@@ -80,6 +80,7 @@ function discoverNewCitations() {
  */
 function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
+    console.log(request_case.phone)
     return knex.transaction(trx => {
         return  trx
         .update({
@@ -102,6 +103,7 @@ function updateAndNotify(request_case) {
         .then(() => request_case)
     })
     .catch(err => {
+        console.log("error: ", err)
         request_case.error = err
         return request_case
     })
@@ -119,8 +121,6 @@ async function sendUnmatched() {
 
     const expired = await getExpiredRequests()
     const expired_sent = await Promise.all(expired.map((r => notifyExpired(r))))
-
-    console.log("after await")
 
     // returning these results to make it easier to log in one place
     return {expired: expired_sent, matched: matched_sent }
