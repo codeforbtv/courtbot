@@ -10,4 +10,4 @@ before_script:
   - cp .env.sample .env
   - npm run dbsetup
 addons:
-  postgresql: "9.4"
+  postgresql: "9.6"
