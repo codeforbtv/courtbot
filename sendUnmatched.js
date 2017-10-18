@@ -81,14 +81,14 @@ function discoverNewCitations() {
 function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
     return knex.transaction(trx => {
-        return  knex('requests')
-        .where('phone', request_case.phone)
-        .andWhere('case_id', request_case.case_id )
-        .transacting(trx)
+        return  trx
         .update({
             'known_case': true,
             'updated_at': knex.fn.now()
         })
+        .into('requests')
+        .where('phone', request_case.phone)
+        .andWhere('case_id', request_case.case_id )
         .then(() => knex('notifications')
             .transacting(trx)
             .insert({
@@ -97,6 +97,7 @@ function updateAndNotify(request_case) {
                 type:'matched'
             })
         )
+        .then(() => console.log("in trx"))
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
         .then(() => request_case)
     })
@@ -118,6 +119,8 @@ async function sendUnmatched() {
 
     const expired = await getExpiredRequests()
     const expired_sent = await Promise.all(expired.map((r => notifyExpired(r))))
+
+    console.log("after await")
 
     // returning these results to make it easier to log in one place
     return {expired: expired_sent, matched: matched_sent }
