@@ -3,7 +3,7 @@
 const db = require('./db.js');
 const messages = require('./utils/messages');
 const manager = require('./utils/db/manager');
-
+const logger = require('./utils/logger');
 const knex = manager.knex;
 
 /**
@@ -80,7 +80,6 @@ function discoverNewCitations() {
  */
 function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
-    console.log(request_case.phone)
     return knex.transaction(trx => {
         return  trx
         .update({
@@ -102,7 +101,7 @@ function updateAndNotify(request_case) {
         .then(() => request_case)
     })
     .catch(err => {
-        console.log("error: ", err)
+        logger.warn(err)
         request_case.error = err
         return request_case
     })
