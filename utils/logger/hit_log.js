@@ -21,18 +21,19 @@ class hit_table extends Transport {
         setImmediate(() => {
             this.emit('logged', "hit");
         });
-         const cipher = crypto.createCipher('aes256', process.env.PHONE_ENCRYPTION_KEY);
-         const phone = info.req.body && info.req.body.From ? cipher.update(info.req.body.From, 'utf8', 'hex') + cipher.final('hex') : undefined
-         return knex('log_hits').insert({
+
+        const cipher = crypto.createCipher('aes256', process.env.PHONE_ENCRYPTION_KEY);
+        const phone = info.req.body && info.req.body.From ? cipher.update(info.req.body.From, 'utf8', 'hex') + cipher.final('hex') : undefined
+        return knex('log_hits').insert({
              path: info.req.url,
              method: info.req.method,
              status_code: info.statusCode,
              phone: phone,
              body: info.req.body && info.req.body.Body,
              action: info[action_symbol]
-         })
-         .then((res) => callback())
-         .catch((err) => rollbar.error(err))
+        })
+        .then((res) => callback())
+        .catch((err) => rollbar.error(err))
     }
   };
 

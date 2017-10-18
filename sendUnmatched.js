@@ -80,8 +80,7 @@ function discoverNewCitations() {
  */
 function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
-    return knex.transaction(trx => {
-        return  trx
+    return knex.transaction(trx => trx
         .update({
             'known_case': true,
             'updated_at': knex.fn.now()
@@ -98,8 +97,8 @@ function updateAndNotify(request_case) {
             })
         )
         .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
-        .then(() => request_case)
-    })
+        .then(() => request_case )
+    )
     .catch(err => {
         logger.warn(err)
         request_case.error = err

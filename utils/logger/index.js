@@ -15,7 +15,7 @@ class rollbarTransport extends Transport {
       super(opts)
     }
     log(error, callback) {
-        setImmediate(() => this.emit('logged', "error"));
+        setImmediate(() => this.emit('logged', "rollbar"));
         rollbar.error(error, function(err2) {
             if (err2) console.log("error reporting to rollbar: ", err2)
             callback()
