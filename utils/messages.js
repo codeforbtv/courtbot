@@ -1,6 +1,5 @@
 const twilio = require('twilio');
 const moment = require('moment-timezone');
-const client = new twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 /**
  * reduces whitespace to a single space
@@ -208,6 +207,8 @@ function youAreNotFollowingAnything(){
  * @return {Promise} Promise to send message.
  */
 function send(to, from, body) {
+    const client = new twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
     return client.messages.create({
         body: body,
         to: to,
