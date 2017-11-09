@@ -272,7 +272,7 @@ function isResponseNo(text) {
 /* Error handling Middleware */
 app.use((err, req, res, next) => {
     if (!res.headersSent) {
-        log.logger.error(err);
+        log.error(err);
 
         // during development, return the trace to the client for helpfulness
         if (app.settings.env !== 'production') {
