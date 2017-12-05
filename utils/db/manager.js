@@ -48,8 +48,8 @@ const createTableInstructions = {
             table.string('case_id');
             table.string('phone');
             table.timestamp('event_date');
-            table.enu('type', ['reminder', 'matched', 'expired'])
-            //table.primary(['case_id', 'phone', 'event_date'])
+            table.enu('type', ['reminder', 'matched', 'expired']);
+            table.string('error');
             table.foreign(['case_id', 'phone']).onDelete('CASCADE').references(['case_id', 'phone' ]).inTable('requests')
         })
     }
@@ -78,6 +78,7 @@ function checkLogDBTables(){
         table.string('body'),
         table.string('action')
     })
+
     return Promise.all([p1, p2])
 }
 

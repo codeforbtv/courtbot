@@ -4,6 +4,7 @@ const db = require('./db.js');
 const manager = require('./utils/db/manager');
 const messages = require('./utils/messages');
 const knex = manager.knex;
+const logger = require('./utils/logger');
 
 /**
  * Find all reminders with a case date of tomorrow for which a reminder has not been sent for that date/time
@@ -30,25 +31,32 @@ function findReminders() {
  */
 function sendReminder(reminder) {
     const phone = db.decryptPhone(reminder.phone);
-    return knex.transaction(trx => {
-        return trx('notifications')
+    return messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder))
+    .then(() => {
+        return knex('notifications')
         .insert({
             case_id: reminder.case_id,
             phone:reminder.phone,
             event_date: reminder.date,
             type: 'reminder'
         })
-        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.reminder(reminder)))
-        .then(() => reminder)
+        .then(() => reminder) // knex needsa then() to fire the request
     })
     .catch(err => {
-        // Catch and log here to allow Promise.all() to send remaining reminders
-        // Twilio will reject the promise returned by messages.send if a user has unsubscribed.
-        // attach err to returned vale so logging can access it
-        reminder.error = err
-        return reminder
+        return knex('notifications')
+        .insert({
+            case_id: reminder.case_id,
+            phone:reminder.phone,
+            event_date: reminder.date,
+            type: 'reminder',
+            error: err
+        })
+        .then(() =>{
+            logger.error(err)
+            reminder.error = err
+            return reminder
+        })
     })
-
 }
 
 /**

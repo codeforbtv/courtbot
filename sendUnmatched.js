@@ -27,36 +27,43 @@ function getExpiredRequests() {
 
 /**
  * Deletes given case_ids and sends unable-to-find message
- * Perform both actions inside transaction so if we only update DB if twilio suceeds
+ * Perform both actions inside transaction so if we only update DB if twilio succeeds
  * and don't send to Twilio if delete fails.
  *
  * @param {*} groupedRequest is an object with a phone and an array of case_ids.
  */
 function notifyExpired(expiredRequest) {
     const phone = db.decryptPhone(expiredRequest.phone);
-    return knex.transaction(trx => {
-        return trx('requests')
+    return knex('requests')
         .where('phone', expiredRequest.phone)
         .and.where('case_id', expiredRequest.case_id )
         .update('active', false)
-        .then(() => trx('notifications')
+        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(expiredRequest)))
+        .then(() => knex('notifications')
             .insert({
                 case_id: expiredRequest.case_id,
                 phone:expiredRequest.phone,
                 type:'expired'
             })
+            .then(() => expiredRequest )
         )
-        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.unableToFindCitationForTooLong(expiredRequest)))
-        .then(() =>  expiredRequest)
-    })
-    .catch(err => {
-        // catch here to allow Promise.all() to send remaining
-        // Numbers from which users have sent Twilio a 'STOP' message will end up here
-        // with a blacklist error. We should test for this and delete the request.
-        // Otherwise it remains in requests and we'll keep attempting to send notifications.
-        expiredRequest.error = err
-        return expiredRequest;
-    })
+        .catch(err => {
+            /* The most likely error should be Twilio's error for users who have stopped service,
+             but other errors like bad numbers are possible. This adds an error to the notification
+             so end admin user can see if there were send errors on notifications */
+           return knex('notifications')
+            .insert({
+                case_id: expiredRequest.case_id,
+                phone:expiredRequest.phone,
+                type:'expired',
+                error: err
+            })
+            .then(() => {
+                logger.error(err)
+                expiredRequest.error = err
+                return expiredRequest;
+            })
+        })
 }
 
 /**
@@ -78,32 +85,40 @@ function discoverNewCitations() {
  * Perform both actions inside transaction so if we only update DB if twilio suceeds
  * @param {*} request_case object from join of request and case table
  */
-function updateAndNotify(request_case) {
+async function updateAndNotify(request_case) {
     const phone = db.decryptPhone(request_case.phone);
-    return knex.transaction(trx => trx
-        .update({
+    return knex.update({
             'known_case': true,
             'updated_at': knex.fn.now()
         })
         .into('requests')
         .where('phone', request_case.phone)
         .andWhere('case_id', request_case.case_id )
+        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
         .then(() => knex('notifications')
-            .transacting(trx)
             .insert({
                 case_id: request_case.case_id,
                 phone:request_case.phone,
                 type:'matched'
             })
+            .then(() => request_case )
         )
-        .then(() => messages.send(phone, process.env.TWILIO_PHONE_NUMBER, messages.foundItWillRemind(true, request_case)))
-        .then(() => request_case )
-    )
-    .catch(err => {
-        logger.warn(err)
-        request_case.error = err
-        return request_case
-    })
+        .catch(err => {
+            /* add error to notification so end admin user can see if there were send errors */
+           return knex('notifications')
+            .insert({
+                case_id: request_case.case_id,
+                phone:request_case.phone,
+                type:'matched',
+                error:err
+            })
+            .then(() => {
+                logger.error(err)
+                request_case.error = err
+                return request_case
+            })
+        })
+
 }
 
 /**
