@@ -200,6 +200,28 @@ function recentNotifications(daysback = 30){
     .then(r => r.rows)
 }
 
+/**
+ * Histogram of user inputs that the app didn't understand
+ * @param {*} daysback
+ */
+function unusableInput(daysback = 30){
+    return knex.raw(`
+    SELECT  body, count(*) from log_hits
+    WHERE action='unusable_input' AND time  > CURRENT_DATE - '1 DAYS'::INTERVAL * :days
+    GROUP BY body;
+    `, {days: daysback})
+    .then(r => r.rows)
+}
+
+function notificationErrors(daysback = 30){
+    return knex.raw(`
+    select * from notifications
+    WHERE error is NOT NULL AND created_at  > CURRENT_DATE - '1 DAYS'::INTERVAL * :days
+    `, {days: daysback})
+    .then(r => r.rows)
+}
+
+
  module.exports = {
     findHearing,
     hearingCount,
@@ -212,6 +234,8 @@ function recentNotifications(daysback = 30){
     notificationCounts,
     notificationErrors,
     notificationRunnerLog,
-    recentNotifications
+    recentNotifications,
+    unusableInput,
+    notificationErrors
  }
 

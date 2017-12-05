@@ -177,4 +177,24 @@ router.get('/hearing_counts', function(req, res, next){
     .catch(err => next(err))
 })
 
+/**
+ * User input that we couldn't understand
+ * @returns [{body:phrase, count: number }]
+ */
+router.get('/unusable_input', function(req, res, next){
+    db.unusableInput(req.query.daysback)
+    .then(data => res.send(data))
+    .catch(err => next(err))
+})
+
+/**
+ * Notifications that recieved errors when sending
+ * @returns [{body:phrase, count: number }]
+ */
+router.get('/notification_errors', function(req, res, next){
+    db.notificationErrors(req.query.daysback)
+    .then(data => res.send(data))
+    .catch(err => next(err))
+})
+
 module.exports = router;
