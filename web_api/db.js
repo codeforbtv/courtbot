@@ -70,7 +70,19 @@ function actionCounts(daysback = 7){
     `, {days: daysback})
     .then(r => r.rows)
 }
-
+/**
+ * Erros sending notifications within last daysback days
+ * @param {Number} daysback
+ */
+function notificationErrors(daysback = 7){
+    return knex.raw(`
+    SELECT *
+    FROM notifications
+    WHERE created_at > CURRENT_DATE - '1 DAYS'::INTERVAL * :days AND error is NOT NULL
+    ORDER BY created_at;
+    `, {days: daysback})
+    .then(r => r.rows)
+}
 /**
  * Get requests and associated notifactions from a case_id
  * @param {String} case_id
@@ -145,16 +157,24 @@ function findRequestNotifications(case_id) {
  */
 function actionsByDay(daysback = 30){
     return knex.raw(`
-    SELECT day, json_agg(jsonb_build_object('type', action, 'count', count)) as actions
-    FROM (
-        SELECT action, time::date as day, COUNT(*)
-        FROM log_hits
-        WHERE ACTION is NOT NULL
-        AND time >  CURRENT_DATE - '1 DAYS'::INTERVAL * :days
-        GROUP BY (action, day)
-    ) act
-    GROUP BY day
-    ORDER BY day;
+    WITH actions as(
+        SELECT DISTINCT action from log_hits WHERE action is NOT NULL
+    ),
+    date_list as (
+       SELECT generate_series as day FROM generate_series(
+            CURRENT_DATE  - '1 DAYS'::INTERVAL * :days,
+             current_date,
+             '1 day'
+        )
+    )
+    SELECT day, json_agg(jsonb_build_object('type', action, 'count', count)) as actions FROM
+        (
+            SELECT date_list.day, actions.action, count(log_hits) FROM date_list
+            CROSS JOIN actions
+            LEFT JOIN log_hits on log_hits.time::date = day  AND log_hits.action = actions.action
+            GROUP by date_list.day, actions.action
+        ) as ag
+        GROUP BY day;
     `, {days: daysback})
     .then(r => r.rows)
 }
@@ -190,6 +210,7 @@ function recentNotifications(daysback = 30){
     actionCounts,
     actionsByDay,
     notificationCounts,
+    notificationErrors,
     notificationRunnerLog,
     recentNotifications
  }

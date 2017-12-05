@@ -111,6 +111,16 @@ router.get('/notification_counts', function(req, res, next){
     .then(data => res.send(data))
     .catch(err => next(err))
 })
+/**
+ * Notifications with errors
+ * @param {Number} daysback [default 7]
+ * @returns [{type:notification type, count: number}]
+ */
+router.get('/notification_errors', function(req, res, next){
+    db.notificationErrors(req.query.daysback)
+    .then(data => res.send(data))
+    .catch(err => next(err))
+})
 
 /**
  * Histogram of action counts grouped by type and then by date
