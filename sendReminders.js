@@ -49,7 +49,7 @@ function sendReminder(reminder) {
             phone:reminder.phone,
             event_date: reminder.date,
             type: 'reminder',
-            error: err
+            error: err.message
         })
         .then(() =>{
             logger.error(err)

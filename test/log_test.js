@@ -31,15 +31,18 @@ describe("Endpoint requests", function(){
         .expect(200)
         .end(function (err, res) {
             if (err) return done(err);
-            knex('log_hits').select('*')
-            .then(rows => {
-                expect(rows.length).to.equal(1)
-                expect(rows[0].phone).to.equal(db.encryptPhone(params.From))
-                expect(rows[0].body).to.equal(params.Body)
-                expect(rows[0].action).to.equal('unmatched_case')
-                expect(rows[0].path).to.equal('/sms')
-            })
-            .then(done);
+            setTimeout(() =>{ // fix this once new winston event emitters are working
+                knex('log_hits').select('*')
+                .then(rows => {
+                    expect(rows.length).to.equal(1)
+                    expect(rows[0].phone).to.equal(db.encryptPhone(params.From))
+                    expect(rows[0].body).to.equal(params.Body)
+                    expect(rows[0].action).to.equal('unmatched_case')
+                    expect(rows[0].path).to.equal('/sms')
+                })
+                .then(done)
+                .catch(done)
+            }, 200)
 
         });
     })

@@ -56,6 +56,38 @@ describe("with one reminder that hasn't been sent", function() {
     })
 });
 
+describe("when there is an error sending the message", function(){
+    let messageStub
+    const errorString = "an error occured"
+    beforeEach(function () {
+        messageStub = sinon.stub(messages, 'send')
+
+        messageStub.rejects(new Error(errorString))
+
+        return manager.ensureTablesExist()
+            .then(clearTable("hearings"))
+            .then(clearTable("requests"))
+            .then(clearTable("notifications"))
+            .then(loadHearings([case1]))
+            .then(addTestRequests([request1]))
+    });
+
+    afterEach(function() {
+        messageStub.restore()
+    });
+
+    it("records the error in the notification", function(){
+        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        return knex("hearings").update({date: moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
+        .then(() => sendReminders())
+        .then(res => knex("notifications").whereIn('case_id', [case1['case_id'], case2['case_id']]).select("*"))
+        .then(rows => {
+            expect(rows[0].error).to.equal(errorString)
+        });
+    })
+
+})
+
 describe("with three reminders (including one duplicate) that haven't been sent", function () {
     let messageMock
 

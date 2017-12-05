@@ -56,7 +56,7 @@ function notifyExpired(expiredRequest) {
                 case_id: expiredRequest.case_id,
                 phone:expiredRequest.phone,
                 type:'expired',
-                error: err
+                error: err.message
             })
             .then(() => {
                 logger.error(err)
@@ -110,7 +110,7 @@ async function updateAndNotify(request_case) {
                 case_id: request_case.case_id,
                 phone:request_case.phone,
                 type:'matched',
-                error:err
+                error:err.message
             })
             .then(() => {
                 logger.error(err)
@@ -118,7 +118,6 @@ async function updateAndNotify(request_case) {
                 return request_case
             })
         })
-
 }
 
 /**
