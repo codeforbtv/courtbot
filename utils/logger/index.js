@@ -3,13 +3,19 @@ const { combine, timestamp, printf, colorize } = format;
 const Transport = require('winston-transport');
 const Rollbar = require('rollbar');
 
+/*
+    The primary purpose of this is to allow simple error logs to be sent to Rollbar
+    Simply calling `logger.error(err)` will send the error to rollbar.
+    Calling `logger.debug('message')` will write to the console.
+*/
+
 const rollbar = new Rollbar({
     accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
     captureUncaught: false,
     captureUnhandledRejections: false
 });
 
-/* Logging with level of error will send notification to Rollbar */
+/* Logging with level of error sends notification to Rollbar */
 class rollbarTransport extends Transport {
     constructor(opts) {
       super(opts)

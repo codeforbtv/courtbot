@@ -13,6 +13,7 @@ const rollbar = new Rollbar({
     captureUnhandledRejections: false
 });
 
+/* Log transport to write logs to database table */
 class hit_table extends Transport {
     constructor(opts) {
       super(opts);

@@ -152,7 +152,7 @@ function findRequestNotifications(case_id) {
 
 
 /**
- * Returns logged action counts grouped by day
+ * Returns logged action counts grouped by day and action
  * @param {Number} daysback (ooptional)
  */
 function actionsByDay(daysback = 30){
