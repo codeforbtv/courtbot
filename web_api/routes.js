@@ -3,23 +3,6 @@ const router = express.Router()
 const db = require('./db')
 const moment = require('moment-timezone')
 
-/*
-router.get('/cases', function(req, res, next){
-if (!req.query || !req.query.q) return res.send(400);
-
-db.fuzzySearch(req.query.q)
-.then(data => {
-  if (data) {
-    data.forEach(function (d) {
-      d.readableDate = dates.fromUtc(d.date).format('dddd, MMM Do');
-    });
-  }
-  res.send(data);
-})
-.catch(err => next(err))
-})
-*/
-
 /**
  * Get info form case_id
  */
@@ -111,6 +94,7 @@ router.get('/notification_counts', function(req, res, next){
     .then(data => res.send(data))
     .catch(err => next(err))
 })
+
 /**
  * Notifications with errors
  * @param {Number} daysback [default 7]

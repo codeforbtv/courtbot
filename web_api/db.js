@@ -208,7 +208,8 @@ function unusableInput(daysback = 30){
     return knex.raw(`
     SELECT  body, count(*) from log_hits
     WHERE action='unusable_input' AND time  > CURRENT_DATE - '1 DAYS'::INTERVAL * :days
-    GROUP BY body;
+    GROUP BY body
+    ORDER BY count DESC;
     `, {days: daysback})
     .then(r => r.rows)
 }
