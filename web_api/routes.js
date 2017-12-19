@@ -1,12 +1,67 @@
+require('dotenv').config();
 const express = require('express')
 const router = express.Router()
 const db = require('./db')
 const moment = require('moment-timezone')
+const jwt = require("jsonwebtoken");
+
+/**
+ * Test whether user/password is valid
+ * @param {String} user
+ * @param {String} password
+ * @returns {Boolean} is user/password valid
+ */
+function authorized(user, password){
+    // just a stub for now using .env values
+    // TODO flesh out with better auth
+    if (user == process.env.ADMIN_LOGIN && password == process.env.ADMIN_PASSWORD) {
+        return true
+    }
+    else { return false }
+}
+
+/**
+ * Middleware that checks JWT in auth header is valid. If it is it will call next() to allow request to proceed
+ * otherwise sends 401.
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+function requireAuth(req, res, next){
+    console.log(req.headers)
+    if (req.headers && req.headers.authorization && req.headers.authorization.split(' ')[0] == 'JWT'){
+        jwt.verify(req.headers.authorization.split(' ')[1], process.env.JWT_SECRET, function(err, decoded){
+            if (err) {
+                console.log(err)
+                res.status(401).json({message: "Authorization Required"})
+            }
+            else {
+                console.log("request from :", decoded.user)
+                next()
+            }
+        })
+    }
+    else {
+        res.status(401).json({message: "Authorization Required"})
+    }
+}
+
+router.post('/admin_login', function(req, res, next){
+    console.log(req.body.user, req.body.password)
+    if(authorized(req.body.user, req.body.password)) {
+        console.log("logging in: ", req.body.user)
+        res.json(({token: jwt.sign({user: req.body.user}, process.env.JWT_SECRET)}))
+    }
+    else{
+        res.status(401).json({message: "Login Failed"})
+    }
+})
+
 
 /**
  * Get info form case_id
  */
-router.get('/case', function(req, res, next){
+router.get('/case', requireAuth, function(req, res, next){
     if (!req.query || !req.query.case_id) return res.sendStatus(400);
     db.findHearing(req.query.case_id)
     .then(data => {

@@ -21,6 +21,7 @@
     "dotenv": "~4.0.0",
     "emoji-strip": "^1.0.1",
     "express": "^4.16.1",
+    "jsonwebtoken": "^8.1.0",
     "knex": "^0.13.0",
     "logfmt": "~1.2.0",
     "moment": "~2.18.1",
