@@ -13,7 +13,7 @@ const jwt = require("jsonwebtoken");
  */
 function authorized(user, password){
     // just a stub for now using .env values
-    // TODO flesh out with better auth
+    // TODO flesh out with better user management
     if (user == process.env.ADMIN_LOGIN && password == process.env.ADMIN_PASSWORD) {
         return true
     }
@@ -28,15 +28,12 @@ function authorized(user, password){
  * @param {*} next
  */
 function requireAuth(req, res, next){
-    console.log(req.headers)
     if (req.headers && req.headers.authorization && req.headers.authorization.split(' ')[0] == 'JWT'){
         jwt.verify(req.headers.authorization.split(' ')[1], process.env.JWT_SECRET, function(err, decoded){
             if (err) {
-                console.log(err)
                 res.status(401).json({message: "Authorization Required"})
             }
             else {
-                console.log("request from :", decoded.user)
                 next()
             }
         })
@@ -47,9 +44,7 @@ function requireAuth(req, res, next){
 }
 
 router.post('/admin_login', function(req, res, next){
-    console.log(req.body.user, req.body.password)
     if(authorized(req.body.user, req.body.password)) {
-        console.log("logging in: ", req.body.user)
         res.json(({token: jwt.sign({user: req.body.user}, process.env.JWT_SECRET)}))
     }
     else{
@@ -78,7 +73,7 @@ router.get('/case', requireAuth, function(req, res, next){
  * @returns:
  * [{case_id:string, phone:string, created_at:date_string, active:boolean, noficiations:[]}]
  */
-router.get('/requests', function(req, res, next){
+router.get('/requests', requireAuth, function(req, res, next){
     if (!req.query || !req.query.case_id) return res.sendStatus(400);
     db.findRequestNotifications(req.query.case_id)
     .then(data => {
@@ -101,7 +96,7 @@ router.get('/requests', function(req, res, next){
  * @returns
  * [{case_id:string, phone:string, created_at:timestamp, active:boolean, noficiations:[]}]
  */
-router.get('/requests_by_phone', function(req, res, next){
+router.get('/requests_by_phone', requireAuth, function(req, res, next){
     if (!req.query || !req.query.phone) return res.sendStatus(400);
     db.findRequestsFromPhone(req.query.phone)
     .then(data => {
@@ -121,7 +116,7 @@ router.get('/requests_by_phone', function(req, res, next){
  * @param {string} encrypted phon
  * @return [{time: timstamp, path:/sms, method:POST, status_code:200, phone:encryptedPhone, body:'user input', action:action}]
  */
-router.get('/phonelog', function(req, res, next){
+router.get('/phonelog', requireAuth, function(req, res, next){
     if (!req.query || !req.query.phone) return res.sendStatus(400);
     db.phoneLog(req.query.phone)
     .then(data => res.send(data))
@@ -133,7 +128,7 @@ router.get('/phonelog', function(req, res, next){
  * @param {Number} daysback [default 7]
  * @returns [{type:action type, count: number}]
  */
-router.get('/action_counts', function(req, res, next){
+router.get('/action_counts', requireAuth, function(req, res, next){
     db.actionCounts(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -144,7 +139,7 @@ router.get('/action_counts', function(req, res, next){
  * @param {Number} daysback [default 7]
  * @returns [{type:notification type, count: number}]
  */
-router.get('/notification_counts', function(req, res, next){
+router.get('/notification_counts', requireAuth,  function(req, res, next){
     db.notificationCounts(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -155,7 +150,7 @@ router.get('/notification_counts', function(req, res, next){
  * @param {Number} daysback [default 7]
  * @returns [{type:notification type, count: number}]
  */
-router.get('/notification_errors', function(req, res, next){
+router.get('/notification_errors', requireAuth, function(req, res, next){
     db.notificationErrors(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -166,7 +161,7 @@ router.get('/notification_errors', function(req, res, next){
  * @param {Number} daysback [default 30]
  * @returns [{day: timestamp, actions:[{type: action number, count:number}]}]
  */
-router.get('/actions_by_day', function(req, res, next){
+router.get('/actions_by_day', requireAuth, function(req, res, next){
     db.actionsByDay(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -176,7 +171,7 @@ router.get('/actions_by_day', function(req, res, next){
  * Dates of the last run of each Runner script
  * @returns [{runner: runner name, date: timestamp}]
  */
-router.get('/runner_last_run', function(req, res, next){
+router.get('/runner_last_run', requireAuth, function(req, res, next){
     db.notificationRunnerLog()
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -188,7 +183,7 @@ router.get('/runner_last_run', function(req, res, next){
  * @returns[{phone_count: number, case_count: number}]
  */
 /* returns a simple object with counts: { scheduled: '3', sent: '10', all: '3' } */
-router.get('/request_counts', function(req, res, next){
+router.get('/request_counts', requireAuth, function(req, res, next){
     db.requestCounts()
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -199,7 +194,7 @@ router.get('/request_counts', function(req, res, next){
  * @param {Number} daysback
  * @returns [{type:notification type, notices:[{phone:encrypted phone, case_id: id, created_at: timestamp when sent, event_date: hearing date}]}]
  */
-router.get('/notifications', function(req, res, next){
+router.get('/notifications', requireAuth, function(req, res, next){
     db.recentNotifications(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -210,7 +205,7 @@ router.get('/notifications', function(req, res, next){
  * @returns [{id: log id, runner: load, count: number, error_count: number, date: runner timestamp }]
  */
 /* returns a simple object with counts: { count: '3' } */
-router.get('/hearing_counts', function(req, res, next){
+router.get('/hearing_counts', requireAuth, function(req, res, next){
     db.hearingCount()
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -220,7 +215,7 @@ router.get('/hearing_counts', function(req, res, next){
  * User input that we couldn't understand
  * @returns [{body:phrase, count: number }]
  */
-router.get('/unusable_input', function(req, res, next){
+router.get('/unusable_input', requireAuth, function(req, res, next){
     db.unusableInput(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
@@ -230,7 +225,7 @@ router.get('/unusable_input', function(req, res, next){
  * Notifications that recieved errors when sending
  * @returns [{body:phrase, count: number }]
  */
-router.get('/notification_errors', function(req, res, next){
+router.get('/notification_errors', requireAuth, function(req, res, next){
     db.notificationErrors(req.query.daysback)
     .then(data => res.send(data))
     .catch(err => next(err))
