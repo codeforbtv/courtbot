@@ -155,7 +155,7 @@ function findRequestNotifications(case_id) {
  * Returns logged action counts grouped by day and action
  * @param {Number} daysback (ooptional)
  */
-function actionsByDay(daysback = 30){
+function actionsByDay(daysback = 14){
     return knex.raw(`
     WITH actions as(
         SELECT DISTINCT action from log_hits WHERE action is NOT NULL
@@ -174,7 +174,8 @@ function actionsByDay(daysback = 30){
             LEFT JOIN log_hits on log_hits.time::date = day  AND log_hits.action = actions.action
             GROUP by date_list.day, actions.action
         ) as ag
-        GROUP BY day;
+        GROUP BY day
+        ORDER BY day;
     `, {days: daysback})
     .then(r => r.rows)
 }
