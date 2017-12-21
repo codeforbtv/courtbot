@@ -23,7 +23,7 @@ app.use(bodyParser.json())
 app.use(cookieSession({
     name: 'session',
     secret: process.env.COOKIE_SECRET,
- //   signed: false, // causing problems with twilio -- investigating
+    signed: false, // causing problems with twilio -- investigating
 }));
 
 /* makes json print nicer for /cases */
