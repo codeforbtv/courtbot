@@ -152,7 +152,7 @@ function createTable(table) {
  */
 function dropTable(table) {
   return knex.schema.dropTableIfExists(table)
-    .then(logger.debug(`Dropped existing table "${table}"`));
+    .then(() => logger.debug(`Dropped existing table "${table}"`));
 }
 
 /**
