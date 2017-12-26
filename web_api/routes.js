@@ -201,6 +201,17 @@ router.get('/notifications', requireAuth, function(req, res, next){
 })
 
 /**
+ * All notifications sent within daysback days grouped by type
+ * @param {Number} daysback
+ * @returns [{type:notification type, notices:[{phone:encrypted phone, case_id: id, created_at: timestamp when sent, event_date: hearing date}]}]
+ */
+router.get('/notifications_by_day', requireAuth, function(req, res, next){
+    db.recentNotificationsByDay(req.query.daysback)
+    .then(data => res.send(data))
+    .catch(err => next(err))
+})
+
+/**
  * The number of hearings in the DB and date of last load runner
  * @returns [{id: log id, runner: load, count: number, error_count: number, date: runner timestamp }]
  */

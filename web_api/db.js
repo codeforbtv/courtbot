@@ -204,6 +204,29 @@ function recentNotifications(daysback = 30){
 }
 
 /**
+ * All notifications since daysback [default 30 days] grouped by day
+ * @param {Number} daysback (optional)
+ */
+function recentNotificationsByDay(daysback = 30){
+    return knex.raw(`
+    SELECT created_at::date, json_agg(jsonb_build_object(
+        'case_id', case_id,
+        'created_at', created_at,
+        'phone', phone,
+        'event_date', event_date,
+        'error', error,
+        'type', type)
+        ORDER BY created_at DESC
+    ) AS notices
+    FROM notifications
+    WHERE created_at  > CURRENT_DATE - '1 DAYS'::INTERVAL * :days
+    GROUP BY created_at::date
+    ORDER BY created_at::date DESC;
+    `, {days: daysback})
+    .then(r => r.rows)
+}
+
+/**
  * Histogram of user inputs that the app didn't understand
  * @param {*} daysback
  */
@@ -239,6 +262,7 @@ function notificationErrors(daysback = 30){
     notificationErrors,
     notificationRunnerLog,
     recentNotifications,
+    recentNotificationsByDay,
     unusableInput,
     notificationErrors
  }
