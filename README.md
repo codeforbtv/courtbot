@@ -76,6 +76,9 @@ heroku config:set COURT_NAME=<name of court system>
 heroku config:set QUEUE_TTL_DAYS=<# days to keep a citation on the search queue>
 heroku config:set TZ=<standard timezone ex. America/Anchorage>
 heroku config:set TEST_TOMORROW_DATES=<1 if you want all court dates to be tomorrow to test reminders>
+heroku config:set ADMIN_LOGIN=<user name for access to admin api>
+heroku config:set ADMIN_PASSWORD=<password for access to admin api>
+heroku config:set JWT_SECRET=<random string to be used to create json web token when authenticating admin api>
 git push heroku master
 heroku run node utils/createRequestsTable.js
 heroku run node utils/createNotificationsTable.js
