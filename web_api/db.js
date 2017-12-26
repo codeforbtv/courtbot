@@ -52,7 +52,8 @@ function actionCounts(daysback = 7){
      SELECT action as type, COUNT(*)
      FROM log_hits
      WHERE time > CURRENT_DATE - '1 DAYS'::INTERVAL * :days AND action IS NOT NULL
-     GROUP BY action;
+     GROUP BY action
+     ORDER BY action;
      `, {days: daysback})
      .then(r => r.rows)
  }
@@ -66,7 +67,8 @@ function actionCounts(daysback = 7){
     SELECT type, COUNT(*)
     FROM notifications
     WHERE created_at > CURRENT_DATE - '1 DAYS'::INTERVAL * :days
-    GROUP BY type;
+    GROUP BY type
+    ORDER BY type;
     `, {days: daysback})
     .then(r => r.rows)
 }
