@@ -367,7 +367,46 @@ describe("POST /sms", function() {
             });
         });
     });
-
+    describe("Status", function(){
+        const number = '+12223334444'
+        const unknownNumber = "+19071234567"
+        const case_id = turnerData().case_id
+        const request = {
+            case_id: case_id,
+            phone: db.encryptPhone(number),
+            known_case: true
+        }
+        beforeEach(function(){
+            return knex('hearings').del()
+            .then(() => knex('requests').del())
+            .then(() => knex('hearings').insert([turnerData()]))
+            .then(() => knex('requests').insert([request]))
+        })
+        describe("When phone number is subscribed to case", function(){
+            it("tells them the case number", function(done){
+                const params = { Body: 'status', From: number };
+                sess.post('/sms').send(params)
+                .expect(200)
+                .end(function(err, res){
+                    if (err) return done(err)
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are currently subscribed to receive notifications for the following cases: ${case_id}</Message></Response>`);
+                    done()
+                })
+            })
+        })
+        describe("When phone number is not subscribed to any cases", function(){
+            it("tells them they aren't subscribed", function(done){
+                const params = {Body: 'status', From : unknownNumber};
+                sess.post('/sms').send(params)
+                .expect(200)
+                .end(function(err, res){
+                    if (err) return done(err)
+                    expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are not currently subscribed for any reminders. If you want to be reminded about an upcoming hearing, send us the case/citation number. You can go to ${process.env.COURT_PUBLIC_URL} for more information. - ${process.env.COURT_NAME}</Message></Response>`);
+                    done()
+                })
+            })
+        })
+    })
     describe("Deleting requests", function() {
         const number = '+12223334444'
         const case_id = turnerData().case_id
@@ -384,7 +423,7 @@ describe("POST /sms", function() {
         })
 
         describe("Without delete_case_id set on session", function(){
-            it("tells them they are subscribed and gives instuction on deleting", function (done){
+            it("tells them they are subscribed and gives instuction on deleting", function(done){
                 const params = { Body: case_id, From: number };
                 sess.post('/sms').send(params)
                 .expect(200)

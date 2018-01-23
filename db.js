@@ -65,7 +65,8 @@ function findRequest(case_id, phone) {
 function requestsFor(phone) {
     return knex('requests')
     .where('phone', encryptPhone(phone))
-    .select('case_id')
+    .andWhere('active', true)
+    .select('case_id', 'active')
 }
 
 /**

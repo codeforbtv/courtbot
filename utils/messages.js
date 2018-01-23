@@ -176,8 +176,17 @@ function alreadySubscribed(case_id){
 }
 
 /**
+ * Sends a list of cases ids the user is currently subscribed to. Only sends cases where active = true
+ * @param {Array} cases 
+ */
+function status(cases){
+    let case_ids = cases.map(c => c.case_id).join(', ')
+    return normalizeSpaces(`You are currently subscribed to receive notifications for the following cases:
+    ${case_ids}`)
+}
+/**
  * tell them we will stop sending reminders about cases
- * @param {Array} cases
+ * @param {string} case_id
  * @return {string} message
  */
 function weWillStopSending(case_id) {
@@ -189,7 +198,7 @@ function weWillStopSending(case_id) {
 /**
  * tell them we don't have any requests in the system for them
  *
- * @return {String} message.
+ * @return {string} message.
  */
 function youAreNotFollowingAnything(){
     return normalizeSpaces(`You are not currently subscribed for any reminders. If you want to be reminded
@@ -231,4 +240,5 @@ module.exports = {
     weWillStopSending,
     youAreNotFollowingAnything,
     alreadySubscribed,
+    status
 };

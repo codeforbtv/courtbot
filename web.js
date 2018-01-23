@@ -82,6 +82,7 @@ app.post('/sms',
     cleanupTextMiddelWare,
     stopMiddleware,
     deleteMiddleware,
+    statusMiddleware,
     yesNoMiddleware,
     currentRequestMiddleware,
     caseIdMiddleware,
@@ -171,6 +172,26 @@ function deleteMiddleware(req, res, next) {
         res.send(twiml.toString());
     })
     .catch(err => next(err));
+}
+
+/**
+ * Responds to 'Status' message which will send a list of currenty subscribed cases
+ */
+function statusMiddleware(req, res, next) {
+    if (req.body.Body !== "STATUS") return next()
+    const phone = req.body.From
+    res[action_symbol] = "status"
+    const twiml = new MessagingResponse();
+    db.requestsFor(phone)
+    .then(cases =>{
+        req.session = null;
+        if (cases.length == 0) {
+            twiml.message(messages.youAreNotFollowingAnything())
+        } else {
+            twiml.message(messages.status(cases))
+        }  
+        res.send(twiml.toString());
+    })
 }
 
 /**
