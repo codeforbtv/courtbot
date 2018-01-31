@@ -242,10 +242,16 @@ function unservicableRequest(req, res, next){
  * @param {String} text
  */
 function possibleCaseID(text) {
-    // Case/Citation IDs should be alpha numeric with possible '-'
-    // between 6 and 25 characters
-    const rx = /^[A-Za-z0-9-]{6,25}$/
-    return rx.test(text);
+    /*  From AK Court System:
+        - A citation must start with an alpha letter (A-Z) and followed 
+          by only alpha (A-Z) and numeric (0-9) letters with a length of 8-17.   
+        - Case number must start with a number (1-4) 
+          and have a length of 14 exactly with dashes.
+    */     
+   
+    const citation_rx = /^[[A-Za-z][A-Za-z0-9]{7,16}$/
+    const case_rx = /^[[1-4][A-Za-z0-9-]{13}$/
+    return case_rx.test(text) ||  citation_rx.test(text);
 }
 
 /**
