@@ -249,8 +249,8 @@ function possibleCaseID(text) {
           and have a length of 14 exactly with dashes.
     */     
    
-    const citation_rx = /^[[A-Za-z][A-Za-z0-9]{7,16}$/
-    const case_rx = /^[[1-4][A-Za-z0-9-]{13}$/
+    const citation_rx = /^[A-Za-z][A-Za-z0-9]{7,16}$/
+    const case_rx = /^[1-4][A-Za-z0-9-]{13}$/
     return case_rx.test(text) ||  citation_rx.test(text);
 }
 

@@ -85,7 +85,7 @@ describe("GET /cases", function() {
         knex('hearings').del()
         .then(() => knex('hearings').insert([turnerData()]))
         .then(() => {
-            sess.get('/cases?q=4928456')
+            sess.get('/cases?q=A4928456')
             .expect(200)
             .end(function(err, res) {
                 if (err) return done(err);
@@ -99,7 +99,7 @@ describe("GET /cases", function() {
         knex('hearings').del()
         .then(() =>  knex('hearings').insert([turnerData()]))
         .then(() => {
-            sess.get('/cases?q=%204928456%20')
+            sess.get('/cases?q=%20A4928456%20')
             .expect(200)
             .end(function(err, res) {
                 if (err) return done(err);
@@ -141,7 +141,7 @@ describe("POST /sms", function() {
 
     context("without session set", function() {
         context("with 1 matching court case", function() {
-            const params = { Body: " 4928456 ", From: "+12223334444"};
+            const params = { Body: " A4928456 ", From: "+12223334444"};
 
             beforeEach(function() {
                 return knex('hearings').del()
@@ -162,7 +162,7 @@ describe("POST /sms", function() {
             it("strips emojis from a text", function (done) {
                 sess.post('/sms')
                 .send({
-                    Body: '4928456 😁',
+                    Body: 'A4928456 😁',
                     From: "+12223334444"
                 })
                 .expect(200)
@@ -176,7 +176,7 @@ describe("POST /sms", function() {
             it("strips everything after newlines and carriage returns from id", function (done) {
                 sess.post('/sms')
                 .send({
-                    Body: '4928456\r\n-Simon',
+                    Body: 'A4928456\r\n-Simon',
                     From: "+12223334444"
                 })
                 .expect(200)
@@ -190,7 +190,7 @@ describe("POST /sms", function() {
             it("strips everything after newlines and carriage returns from id", function (done) {
                 sess.post('/sms')
                 .send({
-                    Body: '4928456\n-Simon',
+                    Body: 'A4928456\n-Simon',
                     From: "+12223334444"
                 })
                 .expect(200)
@@ -216,7 +216,7 @@ describe("POST /sms", function() {
 
         context("with 0 matching court cases", function() {
             context("with a citation length between 6-25 inclusive", function() {
-                const params = { Body: "123456", From: "+12223334444" };
+                const params = { Body: "B1234567", From: "+12223334444" };
 
                 it("says we couldn't find their case and prompt for reminder", function(done) {
                     sess.post('/sms')
@@ -262,7 +262,7 @@ describe("POST /sms", function() {
         });
 
         context("Same day court case or or case already happened", function() {
-            const params = { Body: "4928456", From: "+12223334444"  };
+            const params = { Body: "A4928456", From: "+12223334444"  };
 
             it("says case is same day", function(done) {
                 const caseDate = moment().add(1, "hours")
@@ -391,7 +391,7 @@ describe("POST /sms", function() {
                 .end(function(err, res){
                     if (err) return done(err)
                     expect(res.text).to.equal(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are currently scheduled to receive reminders for this case. We will attempt to text you a courtesy reminder the day before your hearing date. To stop receiving reminders for this case text 'DELETE'. You can go to ${process.env.COURT_PUBLIC_URL} for more information.</Message></Response>`);
-                    expect(getConnectCookie(sess).delete_case_id).to.equal('4928456')
+                    expect(getConnectCookie(sess).delete_case_id).to.equal('A4928456')
                     done()
                 })
             })
@@ -430,7 +430,7 @@ function turnerData(v,d) {
     date: d||TEST_UTC_DATE,
     defendant: 'Frederick Turner',
     room: 'CNVCRT',
-    case_id: '4928456' + (v||""),
+    case_id: 'A4928456' + (v||""),
     type: null
   };
 }
@@ -452,7 +452,7 @@ function rawTurnerDataAsObject(v,d) {
 
 function turnerRequest(){
     return {
-        case_id: '4928456',
+        case_id: 'A4928456',
         phone: '+12223334444',
         known_case: true
     }

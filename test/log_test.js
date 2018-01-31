@@ -17,7 +17,7 @@ const log = require('../utils/logger')
 
 describe("Endpoint requests", function(){
     let sess;
-    const params = { Body: "4928456", From: "+12223334444"  };
+    const params = { Body: "A4928456", From: "+12223334444"  };
 
     beforeEach(function() {
         sess = session(app);
