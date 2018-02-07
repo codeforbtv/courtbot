@@ -100,8 +100,9 @@ function iAmCourtBot() {
  * @return {String} message.
  */
 function invalidCaseNumber() {
-    return normalizeSpaces(`Couldn't find your case. Case identifier should be 6 to 25
-        numbers and/or letters in length.`);
+    return normalizeSpaces(`Reply case or ticket number to sign up for reminder.
+    Case number length should be 14, example: 1ke-18-00001cr.
+    Ticket number can be 8 to 17 letters and/or numbers in length.`);
 }
 
 /**
