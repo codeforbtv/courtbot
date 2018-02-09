@@ -160,12 +160,14 @@ function dropTable(table) {
  *
  * Note:  create logic only creates if a table does not exists, so it is enough to just
  *   call createTable() for each table. Becuase of foreign key constraint, requests table must
- *   exist before creating notifications table
+ *   exist before creating notifications table. The order is imortnat because of constraints.
  *
  * @return {Promise} Promise to ensure all courtbot tables exist.
  */
 function ensureTablesExist() {
-  return Promise.all(['requests', 'hearings', 'notifications'].map(createTable));
+  const tables = ['requests', 'hearings', 'notifications']
+  return tables.reduce((p, v) => p.then(() => createTable(v)), Promise.resolve())
+
 }
 
 module.exports = {
