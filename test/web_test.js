@@ -251,7 +251,7 @@ describe("POST /sms", function() {
                     .expect(200)
                     .end(function(err, res) {
                         if (err) return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Couldn\'t find your case. Case identifier should be 6 to 25 numbers and/or letters in length.</Message></Response>');
+                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Reply case or ticket number to sign up for reminder. Case number length should be 14, example: 1ke-18-00001cr. Ticket number can be 8 to 17 letters and/or numbers in length.</Message></Response>');
                         expect(getConnectCookie(sess).askedQueued).to.equal(undefined);
                         expect(getConnectCookie(sess).askedReminder).to.equal(undefined);
                         expect(getConnectCookie(sess).citationId).to.equal(undefined);
