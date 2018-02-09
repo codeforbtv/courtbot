@@ -100,7 +100,7 @@ function iAmCourtBot() {
  * @return {String} message.
  */
 function invalidCaseNumber() {
-    return normalizeSpaces(`Reply with a case or ticket number to sign up for reminder.
+    return normalizeSpaces(`Reply with a case or ticket number to sign up for a reminder.
     Case number length should be 14, example: 1ke-18-00001cr.
     Ticket number can be 8 to 17 letters and/or numbers in length.`);
 }
