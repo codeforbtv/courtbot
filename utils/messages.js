@@ -35,6 +35,17 @@ function forMoreInfo() {
     for more information about your case and contact information.`);
 }
 /**
+ * message when user replies 'No' when offered to reciece reminders
+ *
+ * @return {String} message.
+ */
+function repliedNo(){
+    return normalizeSpaces(`You said “No” so we won’t text you a reminder.
+    You can always go to ${process.env.COURT_PUBLIC_URL}
+    for more information about your case and contact information.`);
+}
+
+/**
  * tell them of the court date, and ask them if they would like a reminder
  *
  * @param  {Boolean} includeSalutation true if we should greet them
@@ -124,8 +135,8 @@ function notFoundAskToKeepLooking() {
  * @return {string} message
  */
 function reminder(occurrence) {
-    return normalizeSpaces(`Courtesy reminder: ${occurrence.defendant} has a court hearing on
-        ${moment(occurrence.date).format('h:mm A')} at ${occurrence.room}.
+    return normalizeSpaces(`Courtesy reminder: ${cleanupName(occurrence.defendant)} has a court hearing on
+        ${moment(occurrence.date).format('ddd, MMM Do')} at ${moment(occurrence.date).format('h:mm A')} at ${occurrence.room}.
         You should confirm your hearing date and time by going to
         ${process.env.COURT_PUBLIC_URL}.
         - ${process.env.COURT_NAME}`);
@@ -232,4 +243,5 @@ module.exports = {
     weWillStopSending,
     youAreNotFollowingAnything,
     alreadySubscribed,
+    repliedNo
 };

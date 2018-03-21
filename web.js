@@ -146,7 +146,7 @@ function yesNoMiddleware(req, res, next) {
         req.session = null;
         req.session = null;
         res[action_symbol] = "decline_reminder"
-        twiml.message(messages.forMoreInfo());
+        twiml.message(messages.repliedNo());
         res.send(twiml.toString());
     } else{
         next()
