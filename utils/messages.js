@@ -102,7 +102,7 @@ function iAmCourtBot() {
 function invalidCaseNumber() {
     return normalizeSpaces(`Reply with a case or ticket number to sign up for a reminder.
     Case number length should be 14, example: 1ke-18-00001cr.
-    Ticket number can be 8 to 17 letters and/or numbers in length.`);
+    Ticket number can be 8 to 17 letters and/or numbers in length, example: KETEEP00000123456.`);
 }
 
 /**
@@ -111,8 +111,8 @@ function invalidCaseNumber() {
  * @return {String} message.
  */
 function notFoundAskToKeepLooking() {
-    return normalizeSpaces(`Could not find a case with that number. It can take
-        several days for a case to appear in our system. Would you like us to keep
+    return normalizeSpaces(`We could not find that number. It can take several days for a citation 
+        number to appear in our system. Would you like us to keep
         checking for the next ${process.env.QUEUE_TTL_DAYS} days and text you if
         we find it? (reply YES or NO)`);
 }
@@ -124,7 +124,7 @@ function notFoundAskToKeepLooking() {
  * @return {string} message
  */
 function reminder(occurrence) {
-    return normalizeSpaces(`Reminder: It appears you have a court hearing tomorrow at
+    return normalizeSpaces(`Courtesy reminder: ${occurrence.defendant} has a court hearing on
         ${moment(occurrence.date).format('h:mm A')} at ${occurrence.room}.
         You should confirm your hearing date and time by going to
         ${process.env.COURT_PUBLIC_URL}.
@@ -159,7 +159,7 @@ function weWillKeepLooking() {
  * @return {String} message.
  */
 function weWillRemindYou() {
-    return normalizeSpaces(`Sounds good. We will attempt to text you a courtesy reminder
+    return normalizeSpaces(`OK. We will text you a courtesy reminder
         the day before your hearing date. Note that court schedules frequently change.
         You should always confirm your hearing date and time by going
         to ${process.env.COURT_PUBLIC_URL}.`);
