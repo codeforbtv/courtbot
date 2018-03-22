@@ -44,7 +44,16 @@ function repliedNo(){
     You can always go to ${process.env.COURT_PUBLIC_URL}
     for more information about your case and contact information.`);
 }
-
+/**
+ * message when user replies 'No' when offered to reciece reminders
+ *
+ * @return {String} message.
+ */
+function repliedNoToKeepChecking(){
+    return normalizeSpaces(`You said “No” so we won’t keep checking.
+    You can always go to ${process.env.COURT_PUBLIC_URL}
+    for more information about your case and contact information.`);
+}
 /**
  * tell them of the court date, and ask them if they would like a reminder
  *
@@ -243,5 +252,6 @@ module.exports = {
     weWillStopSending,
     youAreNotFollowingAnything,
     alreadySubscribed,
-    repliedNo
+    repliedNo,
+    repliedNoToKeepChecking
 };
