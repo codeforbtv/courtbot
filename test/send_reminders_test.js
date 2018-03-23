@@ -11,8 +11,8 @@ const knex = manager.knex;
 const messages = require('../utils/messages')
 const moment = require('moment-timezone')
 const TEST_CASE_ID = "677167760f89d6f6ddf7ed19ccb63c15486a0eab",
-      TEST_UTC_DATE = moment("2015-03-27T08:00:00").tz(process.env.TZ).format(),
-      TEST_UTC_DATE2 = moment("2015-03-26T08:00:00").tz(process.env.TZ).format();
+      TOMORROW_DATE = moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), // 2:00pm tomorrow
+      TEST_UTC_DATE = moment("2015-03-27T08:00:00").tz(process.env.TZ).format();
 // todo test that reminders are not sent when notification indicates its already sent
 
 describe("with one reminder that hasn't been sent", function() {
@@ -35,18 +35,15 @@ describe("with one reminder that hasn't been sent", function() {
     });
 
     it("sends the correct info to Twilio and adds a notification", function() {
-        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
-        return knex("hearings").update({date: moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() => sendReminders())
+        var message = `Courtesy reminder: Frederick T Turner has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVCRT. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        return sendReminders()
         .then(rows => {
             sinon.assert.calledWith(messageStub, request1.phone, process.env.TWILIO_PHONE_NUMBER, message)
-
         });
     });
 
     it("sending reminder adds a notification with the correct case, phone, and time", function(){
-        return knex("hearings").update({date: moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() => sendReminders())
+        return sendReminders()
         .then(() => knex("notifications").where({ case_id: case1.case_id }).select("*"))
         .then(function (rows) {
             expect(rows.length).to.equal(1);
@@ -77,9 +74,8 @@ describe("when there is an error sending the message", function(){
     });
 
     it("records the error in the notification", function(){
-        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
-        return knex("hearings").update({date: moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() => sendReminders())
+        var message = `Courtesy reminder: Frederick T Turner has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVCRT. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        return sendReminders()
         .then(res => knex("notifications").whereIn('case_id', [case1['case_id'], case2['case_id']]).select("*"))
         .then(rows => {
             expect(rows[0].error).to.equal(errorString)
@@ -107,12 +103,13 @@ describe("with three reminders (including one duplicate) that haven't been sent"
     });
 
     it("sends the correct info to Twilio, adds notification, and skips duplicate request", function () {
-        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
-        messageMock.expects('send').resolves(true).once().withExactArgs(request1.phone, process.env.TWILIO_PHONE_NUMBER, message)
-        messageMock.expects('send').resolves(true).once().withExactArgs(request2.phone, process.env.TWILIO_PHONE_NUMBER, message)
+        var message1 = `Courtesy reminder: Frederick T Turner has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVCRT. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        var message2 = `Courtesy reminder: Bob J Smith has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVJAIL. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
 
-        return knex("hearings").update({ date:  moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() => sendReminders())
+        messageMock.expects('send').resolves(true).once().withExactArgs(request1.phone, process.env.TWILIO_PHONE_NUMBER, message1)
+        messageMock.expects('send').resolves(true).once().withExactArgs(request2.phone, process.env.TWILIO_PHONE_NUMBER, message2)
+
+        return sendReminders()
         .then(res => knex("notifications").whereIn('case_id', [case1['case_id'], case2['case_id']]).select("*"))
         .then(rows => {
             messageMock.verify()
@@ -121,12 +118,11 @@ describe("with three reminders (including one duplicate) that haven't been sent"
     });
 });
 
-describe("with notification already set for hearing", function () {
+describe("with notification already sent for hearing", function () {
     let messageMock
 
     beforeEach(function () {
         messageMock = sinon.mock(messages)
-        //messageExpectation.resolves(true)
 
         return manager.ensureTablesExist()
             .then(clearTable("hearings"))
@@ -135,7 +131,6 @@ describe("with notification already set for hearing", function () {
             .then(loadHearings([case1, case2]))
             .then(addTestRequests([request1, request2]))
             .then(addTestNotification(notification1))
-
     });
 
     afterEach(function() {
@@ -143,11 +138,10 @@ describe("with notification already set for hearing", function () {
     });
 
     it("Should only send reminders to requests without existing notifications for same case_id/event time/number", function(){
-        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        var message = `Courtesy reminder: Bob J Smith has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVJAIL. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
         messageMock.expects('send').resolves(true).once().withExactArgs(request2.phone, process.env.TWILIO_PHONE_NUMBER, message)
 
-        return knex("hearings").update({ date:  moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() => knex("notifications").update({ event_date:  moment(14, 'HH').tz(process.env.TZ).add(1, 'days')}))
+        return knex("notifications").update({ event_date: TOMORROW_DATE})
         .then(() => sendReminders())
         .then(() => knex("notifications").whereIn('case_id', [case1['case_id'], case2['case_id']]).select("*"))
         .then(rows => {
@@ -157,11 +151,13 @@ describe("with notification already set for hearing", function () {
     })
 
     it("should send reminder when notification exists for same phone/case_id but at a different date/time", function(){
-        var message = `Reminder: It appears you have a court hearing tomorrow at 2:00 PM at NEWROOM. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
-        messageMock.expects('send').resolves(true).once().withExactArgs(request1.phone, process.env.TWILIO_PHONE_NUMBER, message)
-        messageMock.expects('send').resolves(true).once().withExactArgs(request2.phone, process.env.TWILIO_PHONE_NUMBER, message)
-        return knex("hearings").update({ date:  moment(14, 'HH').tz(process.env.TZ).add(1, 'days'), room: 'NEWROOM' })
-        .then(() =>  sendReminders())
+        var message1 = `Courtesy reminder: Frederick T Turner has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVCRT. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+        var message2 = `Courtesy reminder: Bob J Smith has a court hearing on ${TOMORROW_DATE.format('ddd, MMM Do')} at 2:00 PM, at CNVJAIL. You should confirm your hearing date and time by going to ${process.env.COURT_PUBLIC_URL}. - ${process.env.COURT_NAME}`;
+
+        messageMock.expects('send').resolves(true).once().withExactArgs(request1.phone, process.env.TWILIO_PHONE_NUMBER, message1)
+        messageMock.expects('send').resolves(true).once().withExactArgs(request2.phone, process.env.TWILIO_PHONE_NUMBER, message2)
+        
+        return sendReminders()
         .then(() => messageMock.verify())
     })
 })
@@ -200,16 +196,16 @@ function clearTable(table) {
 
 const case1 = {
     //date: '27-MAR-15',
-    date: TEST_UTC_DATE,
-    defendant: 'TURNER, FREDERICK T',
+    date: TOMORROW_DATE,
+    defendant: 'FREDERICK T TURNER',
     room: 'CNVCRT',
     case_id: "4928456"
 }
 
 const case2 = {
     //date: '27-MAR-15',
-    date: TEST_UTC_DATE,
-    defendant: 'SMITH, Bob J',
+    date: TOMORROW_DATE,
+    defendant: ' Bob J SMITH',
     room: 'CNVJAIL',
     case_id: "4928457"
 }
@@ -239,9 +235,3 @@ const notification1 = {
     type:'reminder'
 }
 
-const notification2 = {
-    case_id: case2.case_id,
-    phone: db.encryptPhone(request2.phone),
-    event_date: TEST_UTC_DATE2,
-    type:'reminder'
-}

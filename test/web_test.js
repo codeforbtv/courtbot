@@ -224,7 +224,7 @@ describe("POST /sms", function() {
                     .expect(200)
                     .end(function(err, res) {
                         if (err)  return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Could not find a case with that number. It can take several days for a case to appear in our system. Would you like us to keep checking for the next ' + process.env.QUEUE_TTL_DAYS + ' days and text you if we find it? (reply YES or NO)</Message></Response>');
+                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>We could not find that number. It can take several days for a citation number to appear in our system. Would you like us to keep checking for the next ' + process.env.QUEUE_TTL_DAYS + ' days and text you if we find it? (reply YES or NO)</Message></Response>');
                         done();
                     });
                 });
@@ -251,7 +251,7 @@ describe("POST /sms", function() {
                     .expect(200)
                     .end(function(err, res) {
                         if (err) return done(err);
-                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Reply with a case or ticket number to sign up for a reminder. Case number length should be 14, example: 1ke-18-00001cr. Ticket number can be 8 to 17 letters and/or numbers in length.</Message></Response>');
+                        expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Reply with a case or ticket number to sign up for a reminder. Case number length should be 14, example: 1ke-18-00001cr. Ticket number can be 8 to 17 letters and/or numbers in length, example: KETEEP00000123456.</Message></Response>');
                         expect(getConnectCookie(sess).askedQueued).to.equal(undefined);
                         expect(getConnectCookie(sess).askedReminder).to.equal(undefined);
                         expect(getConnectCookie(sess).citationId).to.equal(undefined);
@@ -333,7 +333,7 @@ describe("POST /sms", function() {
                 .end(function (err, res) {
                     if (err)  return done(err);
 
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sounds good. We will attempt to text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
+                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. We will text you a courtesy reminder the day before your hearing date. Note that court schedules frequently change. You should always confirm your hearing date and time by going to http://courts.alaska.gov.</Message></Response>');
                     expect(getConnectCookie(sess).case_id).to.be.undefined;
                     expect(getConnectCookie(sess).known_case).to.be.undefined;
 
@@ -355,7 +355,7 @@ describe("POST /sms", function() {
                 .expect(200)
                 .end(function (err, res) {
                     if (err) return done(err);
-                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>OK. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
+                    expect(res.text).to.equal('<?xml version="1.0" encoding="UTF-8"?><Response><Message>You said “No” so we won’t text you a reminder. You can always go to ' + process.env.COURT_PUBLIC_URL + ' for more information about your case and contact information.</Message></Response>');
                     expect(getConnectCookie(sess).case_id).to.be.undefined;
                     expect(getConnectCookie(sess).known_case).to.be.undefined;
                     knex("requests").count('* as count')
