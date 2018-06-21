@@ -42,7 +42,7 @@ module.exports = {
 		return "Reminder: It appears you have a court hearing tomorrow at " + 
 			dates.fromUtc(reminder.date).format("h:mm A") +
         	" at " + reminder.room + 
-        	". You should confirm your hearing date and time by going to " + 
+        	". You can verify your hearing date and time by going to CourtView " + 
         	process.env.COURT_PUBLIC_URL + 
         	". - Alaska State Court System";
 	},

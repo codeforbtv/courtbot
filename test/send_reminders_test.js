@@ -35,7 +35,7 @@ describe("with a reminder that hasn't been sent", function() {
     it("sends the correct info to Twilio and updates the reminder to sent", function(done) {
         var number = "+12223334444";
         var message1 = "(1/2) Reminder: It appears you have a court case tomorrow at 2:00 PM at NEWROOM.";
-        var message2 = "(2/2) You should confirm your case date and time by going to " + process.env.COURT_PUBLIC_URL + ". - Alaska State Court System";
+        var message2 = "(2/2)  You can verify your hearing date and time by going to CourtView " + process.env.COURT_PUBLIC_URL + ". - Alaska State Court System";
 
         knex("cases").update({date: dates.now().add(1, 'days'), time: '02:00:00 PM', room: 'NEWROOM' })
             .then(function() {
