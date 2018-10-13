@@ -48,7 +48,7 @@ async function loadData(dataUrls) {
             await loadCSV(stream_client, url, csv_type)
         } catch(err) {
             stream_client.end()
-            throw(err)
+            throw(new HTTPError(err))
         }
     }
     var count = await copyTemp(stream_client)
@@ -84,7 +84,7 @@ function loadCSV(client, url, csv_type){
         request.get(url)
         .on('response', function (res) {
             if (res.statusCode !== 200) {
-              this.emit('error', new HTTPError("Error loading CSV. Return HTTP Status: "+res.statusCode))
+              this.emit('error', "Error loading CSV. Return HTTP Status: "+res.statusCode)
             }
         })
         .on('error', reject)

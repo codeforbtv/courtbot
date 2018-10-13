@@ -16,7 +16,6 @@ function load(){
     .then(() => manager.knex.destroy())
     .catch((err) => {
         if (count < max_tries && err instanceof HTTPError){
-            console.log(err.message)
             log.debug("load failed retrying", err)
             setTimeout(load, time_between_retries) 
         } else {
