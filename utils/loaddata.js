@@ -9,6 +9,9 @@ const manager = require('./db/manager');
 const {HTTPError} = require('./errors')
 const CSV_DELIMITER = ',';
 
+// Temorarily disable SSL checks when loading CSV
+process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0
+
 const csv_headers = {
     criminal_cases: ['date', 'last', 'first', 'room', 'time', 'id', 'type'],
     civil_cases: ['date', 'last', 'first', false, 'room', 'time', 'id', false, 'violation', false]
