@@ -117,7 +117,7 @@ function blockToTable(textBlock) {
         if (dayOfWeek && day && month && time && amPm && location && category && docket) {
             if(!dockets.has(docket)) {
                 events.push({
-                    docket: docket,
+                    case_id: docket,
                     category: category,
                     location: location,
                     dayOfWeek: dayOfWeek,
@@ -187,7 +187,7 @@ function loadCSV(client, header, csvString){
     const csvStream = Readable.from([csvString]);
 
     const transformToTable = csv.transform(row => [
-        `${row.docket}`, 
+        `${row.case_id}`, 
         `${row.category}`, 
         `${row.dayOfWeek} ${row.month} ${row.day} ${row.time} ${row.amPm}`,
         `${row.location}`])
@@ -203,7 +203,7 @@ function loadCSV(client, header, csvString){
     return new Promise(async (resolve, reject) => {
         /*  Since we've transformed csv into [date, defendant, room, id] form, we can just pipe it to postgres */
         // const copy_stream = client.query(copyFrom('COPY hearings_temp ("date", "defendant", "room", "case_id", "type") FROM STDIN CSV'));
-        const copy_stream = client.query(copyFrom('COPY hearings_temp ("docket", "category", "date", "location") FROM STDIN CSV'));
+        const copy_stream = client.query(copyFrom('COPY hearings_temp ("case_id", "category", "date", "location") FROM STDIN CSV'));
         copy_stream.on('error', reject)
         copy_stream.on('end',  resolve)
 
@@ -224,8 +224,8 @@ async function copyTemp(client){
     await manager.dropTable('hearings')
     await manager.createTable('hearings')
     let resp = await client.query(
-        `INSERT INTO hearings (docket, category, date, location)
-        SELECT docket, category, date, location from hearings_temp
+        `INSERT INTO hearings (case_id, category, date, location)
+        SELECT case_id, category, date, location from hearings_temp
         ON CONFLICT DO NOTHING;`
     )
     const count = resp.rowCount
@@ -242,7 +242,7 @@ async function createTempHearingsTable(client){
     // becuase pg temp tables are tied to the life of the client.
     await client.query(
         `CREATE TEMP TABLE hearings_temp (
-            docket varchar(100),
+            case_id varchar(100),
             category varchar(100),
             date varchar(100),
             location varchar(100)

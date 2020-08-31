@@ -22,7 +22,7 @@ const knex = manager.knex;
  */
 function deleteTestRequests(){
     if (process.env.TEST_CASE_NUMBER) {
-        return knex('requests').where('docket', process.env.TEST_CASE_NUMBER)
+        return knex('requests').where('case_id', process.env.TEST_CASE_NUMBER)
         .del()
     }
 }
@@ -36,7 +36,7 @@ function incrementTestCaseDate(){
         return knex.raw(`
             UPDATE hearings 
             SET date = (date + interval '1 day')
-            WHERE docket = '${process.env.TEST_CASE_NUMBER}'
+            WHERE case_id = '${process.env.TEST_CASE_NUMBER}'
         `)
     }
 }
@@ -51,7 +51,7 @@ async function addTestCase(){
        So when the reminders are sent subscribers get the reminder */
     if (process.env.TEST_CASE_NUMBER){
         return  knex.raw(
-            `INSERT INTO hearings (date, location, docket, category)
+            `INSERT INTO hearings (date, location, case_id, category)
              VALUES (CURRENT_DATE + interval '35 hours', 'Courtroom B Juneau Courthouse', '${process.env.TEST_CASE_NUMBER}', 'Cncr')`
         )
     }

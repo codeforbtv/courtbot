@@ -8,12 +8,12 @@ const knex = manager.knex;
  * Details about specific case.
  * @param {*} case_id
  */
-function findHearing(docket) {
+function findHearing(case_id) {
     return knex.raw(`
-    SELECT h.docket, h.date, h.location, h.category
+    SELECT h.case_id, h.date, h.location, h.category
     FROM hearings h
-    WHERE docket = :docket
-    `, {docket: docket})
+    WHERE case_id = :case_id
+    `, {case_id: case_id})
     .then(r => r.rows)
  }
 
@@ -38,7 +38,7 @@ function hearingCount() {
  */
 function requestCounts() {
     return knex('requests')
-    .select(knex.raw('COUNT(DISTINCT phone) AS phone_count, COUNT(DISTINCT docket) AS case_count'))
+    .select(knex.raw('COUNT(DISTINCT phone) AS phone_count, COUNT(DISTINCT case_id) AS case_count'))
     .first()
  }
 
@@ -88,15 +88,15 @@ function notificationErrors(daysback = 7){
  * Get requests and associated notifactions from a case_id
  * @param {String} case_id
  */
-function findRequestNotifications(docket) {
-    docket = docket.toUpperCase().trim();
+function findRequestNotifications(case_id) {
+    case_id = case_id.toUpperCase().trim();
     return knex.raw(`
-    SELECT r.docket, r.phone, r.created_at, r.active, json_agg(n) as notifications
+    SELECT r.case_id, r.phone, r.created_at, r.active, json_agg(n) as notifications
     FROM requests r
-    LEFT JOIN notifications n ON (r.docket = n.docket AND r.phone = n.phone)
-    WHERE r.docket = :docket
-    GROUP BY (r.docket, r.phone)
-    `, {docket: docket})
+    LEFT JOIN notifications n ON (r.case_id = n.case_id AND r.phone = n.phone)
+    WHERE r.case_id = :case_id
+    GROUP BY (r.case_id, r.phone)
+    `, {case_id: case_id})
     .then(r => r.rows)
  }
 
@@ -107,11 +107,11 @@ function findRequestNotifications(docket) {
  function findRequestsFromPhone(phone) {
     // expects encypted phone
     return knex.raw(`
-    SELECT r.docket, r.phone, r.created_at, r.active, json_agg(n) as notifications
+    SELECT r.case_id, r.phone, r.created_at, r.active, json_agg(n) as notifications
     FROM requests r
-    LEFT JOIN notifications n ON (r.docket = n.docket AND r.phone = n.phone)
+    LEFT JOIN notifications n ON (r.case_id = n.case_id AND r.phone = n.phone)
     WHERE r.phone = :phone
-    GROUP BY (r.docket, r.phone)
+    GROUP BY (r.case_id, r.phone)
     `, {phone: phone})
     .then(r => r.rows)
  }
@@ -146,9 +146,9 @@ function findRequestNotifications(docket) {
   * The notfications associated with a specific case_id
   * @param {string} case_id
   */
- function notificationsFromCitation(docket) {
+ function notificationsFromCitation(case_id) {
      return knex('notifications')
-     .where('docket', docket)
+     .where('case_id', case_id)
  }
 
 
@@ -188,7 +188,7 @@ function actionsByDay(daysback = 14){
 function recentNotifications(daysback = 30){
     return knex.raw(`
     SELECT type, json_agg(jsonb_build_object(
-        'docket', docket,
+        'case_id', case_id,
         'created_at', created_at,
         'phone', phone,
         'event_date', event_date)
@@ -209,7 +209,7 @@ function recentNotifications(daysback = 30){
 function recentNotificationsByDay(daysback = 30){
     return knex.raw(`
     SELECT created_at::date, json_agg(jsonb_build_object(
-        'docket', docket,
+        'case_id', case_id,
         'created_at', created_at,
         'phone', phone,
         'event_date', event_date,
