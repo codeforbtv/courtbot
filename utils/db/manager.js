@@ -26,13 +26,12 @@ const createTableInstructions = {
         .then((exists) => {
             if (!exists) {
                 return knex.schema.createTable('hearings', (table) => {
-                    table.string('defendant', 100);
-                    table.timestamp('date');
-                    table.string('room', 100);
-                    table.string('case_id', 100);
-                    table.string('type', 100);
-                    table.primary(['case_id', 'date']);
-                    table.index('case_id');
+                    table.string('docket', 100);
+                    table.string('category', 100);
+                    table.string('date', 100);
+                    table.string('location', 100);
+                    table.primary(['docket', 'date']);
+                    table.index('docket');
                 })
             }
         })
@@ -43,11 +42,11 @@ const createTableInstructions = {
             if (!exists) {
                 return knex.schema.createTable('requests', (table) => {
                     table.timestamps(true, true);
-                    table.string('case_id', 100);
+                    table.string('docket', 100);
                     table.string('phone', 100);
                     table.boolean('known_case').defaultTo(false);
                     table.boolean('active').defaultTo(true);
-                    table.primary(['case_id', 'phone']);
+                    table.primary(['docket', 'phone']);
                 });
             }
         })
@@ -58,12 +57,12 @@ const createTableInstructions = {
             if (!exists) {
                 return knex.schema.createTable('notifications', (table) => {
                     table.timestamp('created_at').defaultTo(knex.fn.now());
-                    table.string('case_id');
+                    table.string('docket');
                     table.string('phone');
                     table.timestamp('event_date');
                     table.enu('type', ['reminder', 'matched', 'expired']);
                     table.string('error');
-                    table.foreign(['case_id', 'phone']).onDelete('CASCADE').references(['case_id', 'phone' ]).inTable('requests')
+                    table.foreign(['docket', 'phone']).onDelete('CASCADE').references(['docket', 'phone' ]).inTable('requests')
                 })
             }
         })
