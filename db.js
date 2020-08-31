@@ -37,12 +37,12 @@ function decryptPhone(phone) {
  * @param {string} case_id
  * return
  */
-function findCitation(case_id) {
-    return knex('hearings').where('case_id', case_id )
-    .select('*', knex.raw(`
-        CURRENT_DATE = date_trunc('day', date) as today,
-        date < CURRENT_TIMESTAMP as has_past
-    `))
+function findCitation(docket) {
+    return knex('hearings').where('docket', docket )
+    // .select('*', knex.raw(`
+    //     CURRENT_DATE = date_trunc('day', date) as today,
+    //     date < CURRENT_TIMESTAMP as has_past
+    // `))
 }
 
 /**
@@ -50,8 +50,8 @@ function findCitation(case_id) {
  * @param {*} case_id
  * @param {*} phone
  */
-function findRequest(case_id, phone) {
-    return knex('requests').where('case_id', case_id )
+function findRequest(docket, phone) {
+    return knex('requests').where('docket', docket )
     .andWhere('phone', encryptPhone(phone) )
     .andWhere('active', true)
     .select('*')

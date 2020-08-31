@@ -64,10 +64,10 @@ function repliedNoToKeepChecking(){
  * @return {String} message.
  */
 function foundItAskForReminder(match) {
-    const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
-        ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
-        at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
-
+    // const caseInfo = `We found a case for ${cleanupName(match.defendant)} scheduled
+    //     ${(match.today ? 'today' : `on ${moment(match.date).format('ddd, MMM Do')}`)}
+    //     at ${moment(match.date).format('h:mm A')}, at ${match.room}.`;
+    const caseInfo = `We found a case for ${cleanupName(match.docket)} scheduled on ${match.date} at ${match.location}.`;
     let futureHearing = '';
     if (match.has_past) {
         futureHearing = ' a future hearing';
