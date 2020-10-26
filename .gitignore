@@ -6,3 +6,4 @@ utils/tmp/*
 TODO
 .idea
 .vscode/
+env/*
